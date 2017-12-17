@@ -1,0 +1,17 @@
+
+Issue #1: The download handler cannot handle multiple files, only one at a time
+and a shapefile, by definition, is a collection of files.
+(see below)
+https://groups.google.com/forum/#!topic/shiny-discuss/q3-2O6JDk74
+Solution: zip the shp and then download the zipped folder
+
+# Next Issue
+The code below shows how to create a zip. Unfortunately you need to do it (1) in a browser and (2) not on windows? If using windows, you would need to setup Rtools
+(see below)
+https://gist.github.com/RCura/b6b1759ddb8ab4035f30
+
+This is a link for how to install RTools on Windows
+https://stackoverflow.com/questions/29129681/create-zip-file-error-running-command-had-status-127
+
+And another solution using Rtools
+https://stackoverflow.com/questions/44032431/r-shiny-downloadhandler-error-while-downloading-shapefiles-using-writeogr

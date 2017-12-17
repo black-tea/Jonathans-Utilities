@@ -16,10 +16,13 @@ geom_buff <- function(boundary, ft) {
 }
 
 # Function to process HTML data into segments
-html_process <- function(htmlfile) {
+html_process <- function(fname, datapath) {
+  
+  #print(htmlfile)
   
   # Read the HTML file
-  html_data <- read_html(htmlfile)
+  #fname <- htmlfile$name
+  html_data <- read_html(datapath)
   
   # Process html data
   html_data %>%
@@ -55,11 +58,14 @@ html_process <- function(htmlfile) {
     
     # Merge points into linestring
     lafd_path <- sf_df_filtered %>%
-      summarize(minTime = min(Timestamp),
-                maxTime = max(Timestamp),
-                Time = (max(Timestamp)-min(Timestamp)),
+      summarize(Venice.Begin = min(Timestamp),
+                Venice.End = max(Timestamp),
+                Time.Sec = difftime(max(Timestamp),min(Timestamp),units='secs'),
                 do_union=FALSE) %>%
-      st_cast("LINESTRING")
+      st_cast("LINESTRING") %>%
+      mutate(
+        filename = fname
+      )
     
     # Return resulting segment
     return(lafd_path)
@@ -70,12 +76,43 @@ html_process <- function(htmlfile) {
 }
  
 ### Load and Prep Data
-#veniceblvd <- st_read('C:/Users/Tim/Documents/GitHub/Jonathans-Utilities/TPS/data/eval_extent/tsp-extent_line.shp')
-#veniceblvd_buff <- geom_buff(veniceblvd, 100)
+veniceblvd <- st_read('C:/Users/Tim/Documents/GitHub/Jonathans-Utilities/TPS/data/eval_extent/tsp-extent_line.shp')
+veniceblvd_buff <- geom_buff(veniceblvd, 100)
 
 ### Server Code
 server <- function(input, output) {
   
+  # Reactive expression for data processing when html files are present
+  lafd_paths <- reactive({
+    
+    if(!is.null(input$files_1)) {
+      
+      # Run each file through function, remove NULL values, combine into sf df
+      lafd_paths <- apply(input$files_1[,c('name','datapath')], 1, function(y) html_process(y['name'],y['datapath']))
+      lafd_paths <- lafd_paths[-which(sapply(lafd_paths, is.null))]
+      lafd_paths_df <- do.call(rbind, lafd_paths)
+      
+      # Return formatted df
+      return(lafd_paths_df)
+      
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Reactive expression to create a shapefile
+  # createShp <- reactive({
+  #   myXY <- input$inputdata
+  #   if (is.null(myXY)){
+  #     return(NULL)      
+  #   } else {
+  #     xyPoints <- read.table(myXY$datapath, sep=",", header=T)
+  #     
+  #     shp <- SpatialPointsDataFrame(coords= cbind(xyPoints[,1:2]), data =  xyPoints)
+  #     proj4string(shp) <- CRS("+init=epsg:4326")
+  #     return(shp)
+  #   }
+  # })
 
   output$contents <- renderTable({
     
@@ -83,25 +120,19 @@ server <- function(input, output) {
     # and uploads a file, head of that data file by default,
     # or all rows if selected, will be shown.
     
+    # If not null, process files and output
     if(!is.null(input$files_1)) {
       
-      # Run each file through function, remove NULL values, combine into sf df
-      lafd_paths <- lapply(input$files_1$datapath, html_process)
-      lafd_paths <- lafd_paths[-which(sapply(lafd_paths, is.null))]
-      lafd_paths_df <- do.call(rbind, lafd_paths)
-      lafd_paths_df <- lafd_paths_df %>% 
+      # Format time, remove geometry column
+      lafd_paths_tbl <- lafd_paths() %>%
         mutate(
-          minTime = as.POSIXlt(minTime),
-          maxTime = as.POSIXlt(maxTime),
-          Time = as.POSIXlt(Time),
-          Length = "hi"
-          # Here I want to attach the html filename so I can go back to it.
+          Venice.Begin = as.character(Venice.Begin),
+          Venice.End = as.character(Venice.End)
         ) %>%
         st_set_geometry(NULL)
       
-      # Print output
-      print(lafd_paths_df)
-      return(lafd_paths_df)
+      # Return formatted table
+      return(lafd_paths_tbl)
       
     } else {
       return(NULL)
@@ -122,14 +153,46 @@ server <- function(input, output) {
   # Render the Leaflet Map (based on reactive map object)
   output$vzmap <- renderLeaflet({
     
+    # Map object
     map <- leaflet() %>%
       
       # Add stamen tileset - Toner Lite
-      addProviderTiles(providers$Stamen.TonerLite) 
+      addProviderTiles(providers$Stamen.TonerLite)
+    
+    # If there are paths within Venice Blvd area, add to map
+    if(!is.null(lafd_paths())) {
+      map <- map %>% 
+        addPolylines(
+          color = '#fc0307',
+          weight = 3,
+          opacity = 1,
+          data = lafd_paths() 
+      )
+    }
     
     # Return final map
     map
     
   })
+  
+  # Shapefile Output Downloader
+  output$downloadShp <- downloadHandler(
+    filename = 'lafdTripExport.zip',
+    content = function(file) {
+      if (length(Sys.glob("lafdTrip.*"))>0){
+        file.remove(Sys.glob("lafdTrip.*"))
+      }
+      # using sf instead of sp package
+      #writeOGR(SHP, dsn="lafdTrip.shp", layer="lafdTrip", driver="ESRI Shapefile")
+      st_write(lafd_paths(), dsn = "lafdTrip.shp", layer = "lafdTrip", driver = "ESRI Shapefile")
+      # i can add the csv later if i can get the shp working
+      #write.csv(as.data.frame(cbind(SHP@data, as.data.frame(SHP@coords))), "lafdTrip.csv")
+      zip(zipfile='lafdTripExport.zip', files=Sys.glob("lafdTrip.*"))
+      file.copy("lafdTripExport.zip", file)
+      if (length(Sys.glob("lafdTrip.*"))>0){
+        file.remove(Sys.glob("lafdTrip.*"))
+      }
+    }
+  )
   
 }

@@ -12,43 +12,25 @@ ui <- fluidPage(
     
     # Sidebar panel for inputs 
     sidebarPanel(
+      #h5('Step 1: Upload .html files'),
       
       # Input: Select a file
       fileInput("files_1",
-                label = "Select all .html files",
+                label = 'Step 1: Upload .html files',
                 multiple = TRUE,
                 accept = ".html"),
       
       # Horizontal line 
       tags$hr(),
       
-      # Input: Checkbox if file has header
-      checkboxInput("header", "Header", TRUE),
-      
-      # Input: Select separator
-      radioButtons("sep", "Separator",
-                   choices = c(Comma = ",",
-                               Semicolon = ";",
-                               Tab = "\t"),
-                   selected = ","),
-      
-      # Input: Select quotes 
-      radioButtons("quote", "Quote",
-                   choices = c(None = "",
-                               "Double Quote" = '"',
-                               "Single Quote" = "'"),
-                   selected = '"'),
-      
-      # Horizontal line 
-      tags$hr(),
-      
-      # Input: Select number of rows to display ----
-      radioButtons("disp", "Display",
-                   choices = c(Head = "head",
-                               All = "all"),
-                   selected = "head")
+      h5(tags$b('Step 2: Export clipped data')),
+      #tags$b('Step2: Export clipped .shp and .csv'),
+
+      # Download button
+      downloadButton('downloadShp', 'Download Shapefile')
       
     ),
+    
   
     ### Main Output
     fluidRow(

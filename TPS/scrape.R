@@ -57,16 +57,20 @@ sf_df_filtered <- sf_df[veniceblvd_buff,]
 
 ### Create Polylines
 if(nrow(sf_df_filtered) > 1){
+  
   # Merge points into linestring
   lafd_path <- sf_df_filtered %>%
-    summarize(m = mean(Lng),do_union=FALSE) %>%
+    summarize(minTime = min(Timestamp),
+              maxTime = max(Timestamp),
+              Time = (max(Timestamp)-min(Timestamp)),
+              do_union=FALSE) %>%
     st_cast("LINESTRING")
 }
 
 ### Create the Map
 m <- leaflet() %>%
   addTiles() %>%  # Add default OpenStreetMap map tiles
-  addMarkers(popup = as.character(sf_df$Timestamp),
+  addMarkers(popup = as.character(sf_df_filtered$Timestamp),
              data = sf_df_filtered
              ) %>%
   addPolylines(

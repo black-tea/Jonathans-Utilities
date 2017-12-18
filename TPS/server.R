@@ -106,7 +106,7 @@ segmentize <- function(spatial_df, fname) {
 }
  
 ### Load and Prep Data
-veniceblvd <- st_read('C:/Users/Tim/Documents/GitHub/Jonathans-Utilities/TPS/data/eval_extent/tsp-extent_line.shp')
+veniceblvd <- st_read('data/eval_extent/tsp-extent_line.shp')
 veniceblvd_buff <- geom_buff(veniceblvd, 100)
 
 ### Server Code

@@ -298,7 +298,7 @@ server <- function(input, output) {
         file.remove(Sys.glob("lafdTrip.*"))
       }
       # using sf instead of sp package
-      writeOGR(SHP, dsn="lafdTrip.shp", layer="lafdTrip", driver="ESRI Shapefile")
+      writeOGR(lafd_paths(), dsn="lafdTrip.shp", layer="lafdTrip", driver="ESRI Shapefile")
       #st_write(lafd_paths(), dsn = "lafdTrip.shp", layer = "lafdTrip", driver = "ESRI Shapefile")
       # i can add the csv later if i can get the shp working
       #write.csv(as.data.frame(cbind(SHP@data, as.data.frame(SHP@coords))), "lafdTrip.csv")

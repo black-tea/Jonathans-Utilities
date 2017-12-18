@@ -48,7 +48,6 @@ html_process <- function(datapath) {
                     coords=c("Lng","Lat"),
                     crs=4326,
                     remove=FALSE)
-  print(sf_df)
   return(sf_df)
   
 }
@@ -71,14 +70,11 @@ sf_points_filter <- function(spatial_df) {
 # Function to take spatial df, filter to project boundary, and create segments
 segmentize <- function(spatial_df, fname) {
   
-  # Filter points within project boundary
-  #sf_df_filtered <- spatial_df[veniceblvd_buff,]
-  
   # Create Polylines
   if(!is.null(spatial_df)){
     
     # Merge points into linestring
-    lafd_path <- sf_df_filtered %>%
+    lafd_path <- spatial_df %>%
       summarize(Venice.Begin = min(Timestamp),
                 Venice.End = max(Timestamp),
                 Time.Sec = difftime(max(Timestamp),min(Timestamp),units='secs'),
@@ -124,11 +120,17 @@ server <- function(input, output) {
       
       # html process function for all uploaded html files
       lafd_points <- lapply(input$files_1$datapath, html_process)
+      
       # add name of html file to list
-      #lafd_points <- Map(list, lafd_points, input$files_1$name)
-      # Return final list
       names(lafd_points) <- input$files_1$name
       
+      # Filter out points outside the project boundary
+      lafd_points <- lapply(lafd_points, sf_points_filter)
+      
+      # Subset out NULL values
+      lafd_points <- lafd_points[-which(sapply(lafd_points, is.null))]
+      
+      # Return final list of sf dfs
       return(lafd_points)
       
     } else {
@@ -140,48 +142,68 @@ server <- function(input, output) {
   # Reactive expression for converting points to segments
   lafd_paths <- reactive({
     
-    if(!is.null(input$files_1)) {
-      #print(input$files_1$datapath)
+    if(!is.null(lafd_points())) {
+
+      # Extract points and filenames
+      pts <- lafd_points()
+      names <- names(lafd_points())
       
-      # Step 1: Run each file through function, remove NULL values, combine into sf df
-      #lafd_paths <- apply(input$files_1[,c('name','datapath')], 1, function(y) html_process(y['name'],y['datapath']))
-      lafd_points <- lapply(input$files_1$datapath, html_process)
-      print(lafd_points)
-      
-      # Here i need to 
-      #lafd_paths <- apply(input$files_1[,c('name','datapath')], 1, function(y) html_process(y['name'],y['datapath']))
+      # Set simplify = FALSE to return list instead of matrix
+      lafd_paths <- mapply(segmentize
+                                  ,pts
+                                  ,names
+                                  ,SIMPLIFY = FALSE
+                                  )
       
       # From sf dfs, get paths
-      #lafd_paths <- lafd_paths[-which(sapply(lafd_paths, is.null))]
-      #lafd_paths_df <- do.call(rbind, lafd_paths)
+      lafd_paths_df <- do.call(rbind, lafd_paths)
       
       # Return formatted df
-      #return(lafd_paths_df)
-      return(NULL)
+      return(lafd_paths_df)
       
     } else {
       return(NULL)
     }
   })
   
-  # Reactive expression to get selected rows from lafd_paths object
+  # Reactive expression to get points from selected rows
+  lafd_points_s <- reactive({
+    
+    if(is.null(input$contents_rows_selected)){
+      return(NULL)
+    } else {
+      
+      # Get selected rows
+      s <- input$contents_rows_selected
+      
+      # Filter data
+      lafd_points_s <- lafd_points()
+      lafd_points_s <- lafd_points_s[[s]]
+      
+      # Return filtered data
+      return(lafd_points_s)
+    }
+  })
+  
+  # Reactive expression to get paths from selected rows
   lafd_paths_s <- reactive({
-    return(NULL)
-    # # If null, return null, else get selected row(s)
-    # if(is.null(lafd_paths())){
-    #   return(NULL)
-    # } else {
-    #   
-    #   # Get selected rows
-    #   s <- input$contents_rows_selected
-    #   print(s)
-    #   # Filter data
-    #   lafd_paths_df_s <- lafd_paths()
-    #   lafd_paths_df_s <- lafd_paths_df_s[s,]
-    #   # Return filtered data
-    #   print(lafd_paths_df_s)
-    #   return(lafd_paths_df_s)
-    # }
+
+    # If null, return null, else get selected row(s)
+    if(is.null(input$contents_rows_selected)){
+      return(NULL)
+    } else {
+
+      # Get selected rows
+      s <- input$contents_rows_selected
+      
+      # Filter data
+      lafd_paths_df_s <- lafd_paths()
+      lafd_paths_df_s <- lafd_paths_df_s[s,]
+      
+      # Return filtered data
+      #print(lafd_paths_df_s)
+      return(lafd_paths_df_s)
+    }
     
   })
   
@@ -190,7 +212,7 @@ server <- function(input, output) {
     
     # Input variables
     upload_ct <- nrow(input$files_1)
-    venice_ct <- nrow(lafd_paths())
+    venice_ct <- nrow(lafd_paths()) #having trouble with this one
     
     # Output text
     if (!is.null(input$files_1)) {
@@ -200,12 +222,19 @@ server <- function(input, output) {
           ,venice_ct
           ,' trips have segments within the project area.')
     }
+    
   })
   
   # Data Table Output
   output$contents <- DT::renderDataTable({
     
-    print(lafd_points())
+    #print(str(lafd_points()))
+    #hi <- lafd_points()
+    #print(hi[[1]])
+    #hi <- lafd_points_s()
+    #print(hi)
+    
+    #print(lafd_points()[[0]])
     
     # input$files_1 will be NULL initially. After the user selects
     # and uploads a file, head of that data file by default,
@@ -229,7 +258,9 @@ server <- function(input, output) {
       return(NULL)
     }
     
-  })
+  },
+  # Restrict it to only one row selected at a time
+  selection='single')
   
   # Render the Leaflet Map (based on reactive map object)
   output$vzmap <- renderLeaflet({
@@ -248,7 +279,10 @@ server <- function(input, output) {
           weight = 3,
           opacity = 1,
           data = lafd_paths_s() 
-      )
+      ) %>%
+        addMarkers(
+          data = lafd_points_s()
+        )
     }
     
     # Return final map

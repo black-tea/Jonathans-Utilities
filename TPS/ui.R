@@ -1,4 +1,5 @@
 library(shiny)
+library(DT)
 library(leaflet)
 
 ### User Interface
@@ -12,22 +13,28 @@ ui <- fluidPage(
     
     # Sidebar panel for inputs 
     sidebarPanel(
-      #h5('Step 1: Upload .html files'),
       
       # Input: Select a file
       fileInput("files_1",
-                label = 'Step 1: Upload .html files',
+                label = '1. Upload .html files',
                 multiple = TRUE,
                 accept = ".html"),
+      
+      # Upload summary results text
+      textOutput('result'),
       
       # Horizontal line 
       tags$hr(),
       
-      h5(tags$b('Step 2: Export clipped data')),
-      #tags$b('Step2: Export clipped .shp and .csv'),
+      h5(tags$b('2. Select table row(s) to view in the map')),
+      
+      # Horizontal line
+      tags$hr(),
+      
+      h5(tags$b('3. Export all clipped data')),
 
       # Download button
-      downloadButton('downloadShp', 'Download Shapefile')
+      downloadButton('downloadShp', 'Download')
       
     ),
     
@@ -42,7 +49,7 @@ ui <- fluidPage(
         leafletOutput("vzmap", height = 300),
         
         # Results Table
-        tableOutput("contents")
+        DT::dataTableOutput("contents")
     
       )
     )

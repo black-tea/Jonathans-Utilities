@@ -5,6 +5,7 @@ library(stringr)
 library(sf)
 library(leaflet)
 library(dplyr)
+library(DT)
 
 ### Support Functions
 # Function to buffer in Nad83 and Return in WGS84
@@ -15,13 +16,10 @@ geom_buff <- function(boundary, ft) {
   return(geom_wgs84)
 }
 
-# Function to process HTML data into segments
-html_process <- function(fname, datapath) {
-  
-  #print(htmlfile)
+# Function to process HTML data into spatial df
+html_process <- function(datapath) {  
   
   # Read the HTML file
-  #fname <- htmlfile$name
   html_data <- read_html(datapath)
   
   # Process html data
@@ -50,11 +48,34 @@ html_process <- function(fname, datapath) {
                     coords=c("Lng","Lat"),
                     crs=4326,
                     remove=FALSE)
+  print(sf_df)
+  return(sf_df)
+  
+}
+
+# Function to filter points to project boundary
+sf_points_filter <- function(spatial_df) {
+  
   # Filter points within project boundary
-  sf_df_filtered <- sf_df[veniceblvd_buff,]
+  sf_df_filtered <- spatial_df[veniceblvd_buff,]
+  
+  # Only return if it has at least two points in project boundary
+  if(nrow(sf_df_filtered) > 1){
+    return(sf_df_filtered)
+  } else {
+    return(NULL)
+  }
+  
+}
+
+# Function to take spatial df, filter to project boundary, and create segments
+segmentize <- function(spatial_df, fname) {
+  
+  # Filter points within project boundary
+  #sf_df_filtered <- spatial_df[veniceblvd_buff,]
   
   # Create Polylines
-  if(nrow(sf_df_filtered) > 1){
+  if(!is.null(spatial_df)){
     
     # Merge points into linestring
     lafd_path <- sf_df_filtered %>%
@@ -64,7 +85,20 @@ html_process <- function(fname, datapath) {
                 do_union=FALSE) %>%
       st_cast("LINESTRING") %>%
       mutate(
-        filename = fname
+        File = fname
+      )
+    
+    # Add length and reorder columns
+    lafd_path <- lafd_path %>%
+      mutate(
+        Meters = round(st_length(lafd_path),0)
+      ) %>%
+      select(
+        File,
+        Venice.Begin,
+        Venice.End,
+        Time.Sec,
+        Meters
       )
     
     # Return resulting segment
@@ -82,39 +116,96 @@ veniceblvd_buff <- geom_buff(veniceblvd, 100)
 ### Server Code
 server <- function(input, output) {
   
-  # Reactive expression for data processing when html files are present
-  lafd_paths <- reactive({
+  
+  # Reactive expression to process html files to sf dfs
+  lafd_points <- reactive({
     
     if(!is.null(input$files_1)) {
       
-      # Run each file through function, remove NULL values, combine into sf df
-      lafd_paths <- apply(input$files_1[,c('name','datapath')], 1, function(y) html_process(y['name'],y['datapath']))
-      lafd_paths <- lafd_paths[-which(sapply(lafd_paths, is.null))]
-      lafd_paths_df <- do.call(rbind, lafd_paths)
+      # html process function for all uploaded html files
+      lafd_points <- lapply(input$files_1$datapath, html_process)
+      # add name of html file to list
+      #lafd_points <- Map(list, lafd_points, input$files_1$name)
+      # Return final list
+      names(lafd_points) <- input$files_1$name
+      
+      return(lafd_points)
+      
+    } else {
+      return(NULL)
+    }
+    
+  })
+  
+  # Reactive expression for converting points to segments
+  lafd_paths <- reactive({
+    
+    if(!is.null(input$files_1)) {
+      #print(input$files_1$datapath)
+      
+      # Step 1: Run each file through function, remove NULL values, combine into sf df
+      #lafd_paths <- apply(input$files_1[,c('name','datapath')], 1, function(y) html_process(y['name'],y['datapath']))
+      lafd_points <- lapply(input$files_1$datapath, html_process)
+      print(lafd_points)
+      
+      # Here i need to 
+      #lafd_paths <- apply(input$files_1[,c('name','datapath')], 1, function(y) html_process(y['name'],y['datapath']))
+      
+      # From sf dfs, get paths
+      #lafd_paths <- lafd_paths[-which(sapply(lafd_paths, is.null))]
+      #lafd_paths_df <- do.call(rbind, lafd_paths)
       
       # Return formatted df
-      return(lafd_paths_df)
+      #return(lafd_paths_df)
+      return(NULL)
       
     } else {
       return(NULL)
     }
   })
   
-  # Reactive expression to create a shapefile
-  # createShp <- reactive({
-  #   myXY <- input$inputdata
-  #   if (is.null(myXY)){
-  #     return(NULL)      
-  #   } else {
-  #     xyPoints <- read.table(myXY$datapath, sep=",", header=T)
-  #     
-  #     shp <- SpatialPointsDataFrame(coords= cbind(xyPoints[,1:2]), data =  xyPoints)
-  #     proj4string(shp) <- CRS("+init=epsg:4326")
-  #     return(shp)
-  #   }
-  # })
-
-  output$contents <- renderTable({
+  # Reactive expression to get selected rows from lafd_paths object
+  lafd_paths_s <- reactive({
+    return(NULL)
+    # # If null, return null, else get selected row(s)
+    # if(is.null(lafd_paths())){
+    #   return(NULL)
+    # } else {
+    #   
+    #   # Get selected rows
+    #   s <- input$contents_rows_selected
+    #   print(s)
+    #   # Filter data
+    #   lafd_paths_df_s <- lafd_paths()
+    #   lafd_paths_df_s <- lafd_paths_df_s[s,]
+    #   # Return filtered data
+    #   print(lafd_paths_df_s)
+    #   return(lafd_paths_df_s)
+    # }
+    
+  })
+  
+  # Text Summarizing Clipping Results
+  output$result <- renderPrint({
+    
+    # Input variables
+    upload_ct <- nrow(input$files_1)
+    venice_ct <- nrow(lafd_paths())
+    
+    # Output text
+    if (!is.null(input$files_1)) {
+      cat('Of the total '
+          ,upload_ct
+          ,' trips uploaded, '
+          ,venice_ct
+          ,' trips have segments within the project area.')
+    }
+  })
+  
+  # Data Table Output
+  output$contents <- DT::renderDataTable({
+    
+    print(lafd_points())
     
     # input$files_1 will be NULL initially. After the user selects
     # and uploads a file, head of that data file by default,
@@ -138,16 +229,6 @@ server <- function(input, output) {
       return(NULL)
     }
     
-    
-    
-    
-    # if(input$disp == "head") {
-    #   return(head(df))
-    # }
-    # else {
-    #   return(df)
-    # }
-    
   })
   
   # Render the Leaflet Map (based on reactive map object)
@@ -160,13 +241,13 @@ server <- function(input, output) {
       addProviderTiles(providers$Stamen.TonerLite)
     
     # If there are paths within Venice Blvd area, add to map
-    if(!is.null(lafd_paths())) {
+    if(!is.null(lafd_paths_s())) {
       map <- map %>% 
         addPolylines(
           color = '#fc0307',
           weight = 3,
           opacity = 1,
-          data = lafd_paths() 
+          data = lafd_paths_s() 
       )
     }
     

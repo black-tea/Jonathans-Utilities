@@ -106,7 +106,7 @@ segmentize <- function(spatial_df, fname) {
 }
  
 ### Load and Prep Data
-veniceblvd <- st_read('C:/Users/Tim/Documents/GitHub/Jonathans-Utilities/TPS/data/eval_extent/tsp-extent_line.shp')
+veniceblvd <- st_read('data/eval_extent/tsp-extent_line.shp')
 veniceblvd_buff <- geom_buff(veniceblvd, 100)
 
 ### Server Code
@@ -298,8 +298,8 @@ server <- function(input, output) {
         file.remove(Sys.glob("lafdTrip.*"))
       }
       # using sf instead of sp package
-      #writeOGR(SHP, dsn="lafdTrip.shp", layer="lafdTrip", driver="ESRI Shapefile")
-      st_write(lafd_paths(), dsn = "lafdTrip.shp", layer = "lafdTrip", driver = "ESRI Shapefile")
+      writeOGR(lafd_paths(), dsn="lafdTrip.shp", layer="lafdTrip", driver="ESRI Shapefile")
+      #st_write(lafd_paths(), dsn = "lafdTrip.shp", layer = "lafdTrip", driver = "ESRI Shapefile")
       # i can add the csv later if i can get the shp working
       #write.csv(as.data.frame(cbind(SHP@data, as.data.frame(SHP@coords))), "lafdTrip.csv")
       zip(zipfile='lafdTripExport.zip', files=Sys.glob("lafdTrip.*"))

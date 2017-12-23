@@ -23,7 +23,15 @@ loop_data <- loop_data %>%
   filter(ERRORCODE %in% c(68111,68112)
          ,!is.na(lat)
          ,!is.na(lon)
-         )
+         ) %>%
+  arrange(TIMESTMP) %>%
+  # Calculate lag time between each timestamp and one before it
+   mutate(TIMESTMP_LAG = ifelse(!is.na(lag(TIMESTMP)),
+                                TIMESTMP - lag(TIMESTMP),
+                                0)) %>%
+  # Create break point where there is 3 min gap btw last event, assign Run ID
+  mutate(run_flag = ifelse(TIMESTMP_LAG > 180, 1, 0),
+         run_id = 1 + cumsum(run_flag) )
 
 # Convert df to sf object
 loop_sf <- st_as_sf(loop_data,

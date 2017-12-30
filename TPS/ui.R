@@ -14,9 +14,15 @@ ui <- fluidPage(
     # Sidebar panel for inputs 
     sidebarPanel(
       
-      # Input: Select a file
-      fileInput("files_1",
-                label = '1. Upload .html files',
+      # LADOT TPS file input
+      fileInput("tps_files",
+                label = '1. Upload LADOT TPS logs',
+                multiple = TRUE,
+                accept = ".csv"),
+      
+      # LAFD .html file input
+      fileInput("lafd_files",
+                label = '2. Upload LAFD .html files',
                 multiple = TRUE,
                 accept = ".html"),
       
@@ -26,15 +32,15 @@ ui <- fluidPage(
       # Horizontal line 
       tags$hr(),
       
-      h5(tags$b('2. Select table row(s) to view in the map')),
+      h5(tags$b('3. Select table row(s) to view in the map')),
       
       # Horizontal line
       tags$hr(),
       
-      h5(tags$b('3. Export all clipped data')),
+      h5(tags$b('4. Export all clipped data')),
 
       # Download button
-      downloadButton('downloadShp', 'Download')
+      downloadButton('downloadData', 'Download')
       
     ),
     
@@ -46,10 +52,16 @@ ui <- fluidPage(
       column(width = 7,
         
         # Map Output
-        leafletOutput("vzmap", height = 300),
+        leafletOutput("map", height = 300),
         
         # Results Table
-        DT::dataTableOutput("contents")
+        #DT::dataTableOutput("contents"),
+        tabsetPanel(
+          #id = 'contents',
+          tabPanel("Matched Runs", DT::dataTableOutput("matchtable")),
+          tabPanel("Unmatched TPS Runs", DT::dataTableOutput("tpstable")),
+          tabPanel("Unmatched LAFD Runs", DT::dataTableOutput("lafdtable"))
+        )
     
       )
     )

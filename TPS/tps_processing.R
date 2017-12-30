@@ -26,7 +26,7 @@ loop_data <- loop_data %>%
          ) %>%
   arrange(TIMESTMP) %>%
   # Calculate lag time between each timestamp and one before it
-   mutate(TIMESTMP_LAG = ifelse(!is.na(lag(TIMESTMP)),
+  mutate(TIMESTMP_LAG = ifelse(!is.na(lag(TIMESTMP)),
                                 TIMESTMP - lag(TIMESTMP),
                                 0)) %>%
   # Create break point where there is 3 min gap btw last event, assign Run ID

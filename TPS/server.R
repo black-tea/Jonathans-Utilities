@@ -351,65 +351,7 @@ server <- function(input, output) {
     
   })
   
-  ### Reactive Expressions to get data from selected rows
-  # LAFD points from selected rows
-  lafd_points_s <- reactive({
-    
-    if(is.null(input$lafdtable_rows_selected)){
-      return(NULL)
-    } else {
-      
-      # Get selected rows
-      s <- input$lafdtable_rows_selected
-      
-      # Filter data
-      lafd_points_s <- lafd_points()[[s]]
-      
-      # Return filtered data
-      return(lafd_points_s)
-    }
-  })
-  
-  # LAFD paths from selected rows
-  lafd_paths_s <- reactive({
-    
-    # If null, return null, else get selected row(s)
-    if(is.null(input$lafdtable_rows_selected)){
-      return(NULL)
-    } else {
-      
-      # Get selected rows
-      s <- input$lafdtable_rows_selected
-      
-      # Filter data
-      lafd_paths_df_s <- lafd_paths()
-      lafd_paths_df_s <- lafd_paths_df_s[s,]
-      
-      # Return filtered data
-      return(lafd_paths_df_s)
-    }
-    
-  })
-  
-  # TPS points from selected rows
-  tps_points_s <- reactive({
-    
-    if(is.null(input$tpstable_rows_selected)){
-      return(NULL)
-    } else {
-      
-      # Get selected rows, then run # from joined table
-      row_num <- input$tpstable_rows_selected
-      run_num <- as.integer(tps_tbl()[row_num,1])
-      
-      # Grab points from selected run #
-      tps_points_s <- tps_log() %>%
-        filter(run_id == run_num)
-      
-      return(tps_points_s)
-      #return(run_num)
-    }
-  })
+
   
   ### UI Text Output
   # Text Summarizing Clipping Results
@@ -430,7 +372,7 @@ server <- function(input, output) {
     
   })
   
-  ### UI Output w/ Tables
+  ### UI Table Output
   # Matched Rows
   output$matchtable <- DT::renderDataTable({
 
@@ -479,9 +421,103 @@ server <- function(input, output) {
   # Restrict it to only one row selected at a time
   selection='single')
   
+
+  
+  ### Reactive Expressions to get data from selected rows
+  # List of all points/paths from selected rows of matched data
+  join_pts_s <- reactive({
+    if(!is.null(input$matchtable_rows_selected)){
+      
+      # Get selected rows
+      row_num <- input$matchtable_rows_selected
+      
+      # TPS Points
+      tps_run_num <- as.integer(match_tbl()[row_num, 1])
+      tps_points_s <- tps_log() %>%
+        filter(run_id == tps_run_num)
+      
+      # LAFD Points
+      lafd_map <- as.character(match_tbl()[row_num, 4])
+      lafd_points_s <- lafd_points()[[lafd_map]]
+      
+      # LAFD Paths
+      lafd_paths_df_s <- segmentize(lafd_points_s, lafd_map)
+      
+      # Create list of data
+      join_pts_s <- list(
+        tps_points_s = tps_points_s,
+        lafd_points_s = lafd_points_s,
+        lafd_paths_df_s = lafd_paths_df_s
+      )
+      
+      return(join_pts_s)
+      
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # LAFD points from selected rows
+  lafd_points_s <- reactive({
+    
+    if(is.null(input$lafdtable_rows_selected)){
+      return(NULL)
+    } else {
+      
+      # Get selected rows & grab LAFD Points
+      row_num <- input$lafdtable_rows_selected
+      lafd_map <- as.character(lafd_tbl()[row_num, 1])
+      lafd_points_s <- lafd_points()[[lafd_map]]
+      
+      # Return filtered data
+      return(lafd_points_s)
+    }
+  })
+  
+  # LAFD paths from selected rows
+  lafd_paths_s <- reactive({
+    
+    # If null, return null, else get selected row(s)
+    if(is.null(input$lafdtable_rows_selected)){
+      return(NULL)
+    } else {
+      
+      # Get selected rows
+      row_num <- input$lafdtable_rows_selected
+      lafd_map <- as.character(lafd_tbl()[row_num, 1])
+      lafd_points_s <- lafd_points()[[lafd_map]]
+      
+      # Filter data
+      lafd_paths_df_s <- segmentize(lafd_points_s, lafd_map)
+      
+      # Return filtered data
+      return(lafd_paths_df_s)
+    }
+    
+  })
+  
+  # TPS points from selected rows
+  tps_points_s <- reactive({
+    
+    if(is.null(input$tpstable_rows_selected)){
+      return(NULL)
+    } else {
+      
+      # Get selected rows, then run # from joined table
+      row_num <- input$tpstable_rows_selected
+      run_num <- as.integer(tps_tbl()[row_num,1])
+      
+      # Grab points from selected run #
+      tps_points_s <- tps_log() %>%
+        filter(run_id == run_num)
+      
+      return(tps_points_s)
+    }
+  })
+  
+  ### Map Object
   # Render the Leaflet Map (based on reactive map object)
   output$map <- renderLeaflet({
-    print(tps_points_s())
     
     # Map object
     map <- leaflet() %>%
@@ -493,6 +529,43 @@ server <- function(input, output) {
   })
   
   ### Map Observer Objects
+  # Observer focused on Matched Runs
+  observe({
+
+    if(!is.null(input$matchtable_rows_selected)) {
+
+      #lafd_points_s <- lafd_points_s()
+      join_pts_s <- join_pts_s()
+
+      # Erase markers/shapes and add new lafd ones
+      leafletProxy("map") %>%
+        clearShapes() %>%
+        clearMarkers() %>%
+        addPolylines(
+          color = '#fc0307',
+          weight = 3,
+          opacity = 1,
+          data = join_pts_s$lafd_paths_df_s
+        ) %>%
+        addAwesomeMarkers(
+          data = join_pts_s$lafd_points_s
+          ,icon = createIcon('red')
+          ,label = as.character(join_pts_s$lafd_points_s$Timestamp)
+        ) %>%
+        addAwesomeMarkers(
+          data = join_pts_s$tps_points_s
+          ,icon = createIcon('blue')
+          ,label = ~as.character(join_pts_s$tps_points_s$TIMESTMP)
+        ) %>%
+        # Update the map zoom bounds
+        fitBounds(lng1 = max(join_pts_s$lafd_points_s$Lng),
+                  lat1 = max(join_pts_s$lafd_points_s$Lat),
+                  lng2 = min(join_pts_s$lafd_points_s$Lng),
+                  lat2 = min(join_pts_s$lafd_points_s$Lat)
+        )
+    }
+  })
+  
   # Observer focused on Unmatched LAFD Points
   observe({
     
@@ -513,6 +586,7 @@ server <- function(input, output) {
         addAwesomeMarkers(
           data = lafd_points_s
           ,icon = createIcon('red')
+          ,label = as.character(lafd_points_s$Timestamp)
         ) %>%
         # Update the map zoom bounds
         fitBounds(lng1 = max(lafd_points_s$Lng),
@@ -537,6 +611,7 @@ server <- function(input, output) {
         addAwesomeMarkers(
           data = tps_points_s
           ,icon = createIcon('blue')
+          ,label = ~as.character(TIMESTMP)
         ) %>%
         #Update the map zoom bounds
         fitBounds(lng1 = max(tps_points_s$lon),

@@ -78,9 +78,9 @@ html_process <- function(datapath) {
   # Convert to df, import / convert time to Los Angeles tz
   df <- as.data.frame(do.call(rbind, lapply(lat_lng, rbind)))
   colnames(df) <- c("Lat", "Lng", "Timestamp")
-  df$Timestamp <- as.POSIXct(strptime(df$Timestamp, format = "%d-%b-%y %H.%M.%S", "UTC"))
-  #df$Timestamp <- format(df$Timestamp, tz="America/Los_Angeles",usetz=TRUE)
-  attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
+  df$Timestamp <- as.POSIXct(strptime(df$Timestamp, format = "%d-%b-%y %H:%M:%S", "America/Los_Angeles"))
+  # commenting out timezone conversion, since they are now giving it in LA timezone
+  #attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
   df$Lat <- as.numeric(as.character(df$Lat))
   df$Lng <- as.numeric(as.character(df$Lng))
   
@@ -270,6 +270,10 @@ server <- function(input, output) {
 
     # Only process if both LAFD & LADOT data is not null
     if((!is.null(tps_runs()))&(!is.null(lafd_points()))) {
+      
+      # Debugging
+      print(tps_runs())
+      print(lafd_paths())
       
       # Format time, remove geometry column
       lafd_paths_tbl <- lafd_paths() %>%

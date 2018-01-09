@@ -13,6 +13,8 @@ library(DT)
 library(fuzzyjoin)
 library(IRanges)
 
+options(tibble.print_max = Inf)
+
 ### Support Functions
 # Function to buffer in Nad83 and Return in WGS84
 geom_buff <- function(boundary, ft) {
@@ -32,19 +34,38 @@ tps_process <- function(datapath) {
                         stringsAsFactors = FALSE
   )
   
+  
+  loop_data <- loop_data %>%
+    # Convert timestamp to date/time value
+    mutate(TIMESTMP = as.POSIXct(TIMESTMP,
+                                 #format,
+                                 tryFormats = c("%m/%d/%Y %H:%M:%S",
+                                                "%Y-%m-%d %H:%M:%S"),
+                                 tz="America/Los_Angeles"),
+           DET_ID = as.numeric(DET_ID),
+           TAG_ID = as.numeric(TAG_ID),
+           CON_ID = as.numeric(CON_ID),
+           RECID = as.numeric(RECID),
+           ERRORCODE = as.numeric(ERRORCODE),
+           LATENESS = as.numeric(LATENESS),
+           SYSID = as.numeric(SYSID),
+           EVFLAG = as.numeric(EVFLAG)) %>%
+    # Filter out erroneous dates created by null date values
+    filter(TIMESTMP > "2017-01-01")
+    
+    
   loop_data <- loop_data %>%
     # Join to detector location information
     left_join(detectors, by='DET_ID') %>%
-    # Convert timestamp to date/time value
-    mutate(TIMESTMP = as.POSIXct(strptime(TIMESTMP,
-                                          format = "%m/%d/%Y %H:%M:%S",
-                                          tz="America/Los_Angeles")),
-           lat = as.numeric(lat),
-           lon = as.numeric(lon)) %>%
     # Only want "ISSUED" error codes (68111, 68112); also remove lat/lon NA values
+    mutate(
+      lat = as.numeric(lat),
+      lon = as.numeric(lon)
+    ) %>%
     filter(ERRORCODE %in% c(68111,68112)
            ,!is.na(lat)
            ,!is.na(lon))
+
   
   # Convert df to sf object
   loop_sf <- st_as_sf(loop_data,
@@ -78,9 +99,9 @@ html_process <- function(datapath) {
   # Convert to df, import / convert time to Los Angeles tz
   df <- as.data.frame(do.call(rbind, lapply(lat_lng, rbind)))
   colnames(df) <- c("Lat", "Lng", "Timestamp")
-  df$Timestamp <- as.POSIXct(strptime(df$Timestamp, format = "%d-%b-%y %H:%M:%S", "America/Los_Angeles"))
+  df$Timestamp <- as.POSIXct(strptime(df$Timestamp, format = "%d-%b-%y %H:%M:%S", "America/Honolulu"))
   # commenting out timezone conversion, since they are now giving it in LA timezone
-  #attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
+  attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
   df$Lat <- as.numeric(as.character(df$Lat))
   df$Lng <- as.numeric(as.character(df$Lng))
   

@@ -35,8 +35,8 @@ tps_process <- function(datapath) {
                         stringsAsFactors = FALSE
   )
   
-  print("pre pre")
-  print(loop_data)
+  #print("pre pre")
+  #print(loop_data)
   
   loop_data <- loop_data %>%
     # Convert timestamp to date/time value
@@ -58,8 +58,8 @@ tps_process <- function(datapath) {
     # Filter out erroneous dates created by null date values
     filter(TIMESTMP > "2017-01-01")
   
-  print("pre filter")
-  print(loop_data)
+  #print("pre filter")
+  #print(loop_data)
     
     
   loop_data <- loop_data %>%
@@ -74,8 +74,8 @@ tps_process <- function(datapath) {
            ,!is.na(lat)
            ,!is.na(lon))
 
-  print("post filter")
-  print(loop_data)
+  #print("post filter")
+  #print(loop_data)
   
   # Convert df to sf object
   loop_sf <- st_as_sf(loop_data,
@@ -109,9 +109,7 @@ html_process <- function(datapath) {
   # Convert to df, import / convert time to Los Angeles tz
   df <- as.data.frame(do.call(rbind, lapply(lat_lng, rbind)))
   colnames(df) <- c("Lat", "Lng", "Timestamp")
-  df$Timestamp <- as.POSIXct(df$Timestamp,
-                             format = "%d-%b-%y %H:%M:%S",
-                             tz = "UTC")
+  df$Timestamp <- as.POSIXct(df$Timestamp, format = "%d-%b-%y %I.%M.%S.000000 %p", "UTC")
   # commenting out timezone conversion, since they are now giving it in LA timezone
   attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
   df$Lat <- as.numeric(as.character(df$Lat))
@@ -305,7 +303,7 @@ server <- function(input, output) {
     if((!is.null(tps_runs()))&(!is.null(lafd_points()))) {
       
       # Debugging
-      print(tps_runs())
+      #print(tps_runs())
       print(lafd_paths())
       
       # Format time, remove geometry column

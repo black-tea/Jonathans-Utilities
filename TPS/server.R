@@ -12,6 +12,7 @@ library(dplyr)
 library(DT)
 library(fuzzyjoin)
 library(IRanges)
+library(lubridate)
 
 options(tibble.print_max = Inf)
 
@@ -34,24 +35,31 @@ tps_process <- function(datapath) {
                         stringsAsFactors = FALSE
   )
   
+  print("pre pre")
+  print(loop_data)
   
   loop_data <- loop_data %>%
     # Convert timestamp to date/time value
-    mutate(TIMESTMP = as.POSIXct(TIMESTMP,
-                                 #format,
-                                 tryFormats = c("%m/%d/%Y %H:%M:%S",
-                                                "%Y-%m-%d %H:%M:%S"),
-                                 tz="America/Los_Angeles"),
+    mutate(RECID = as.numeric(RECID),
+           # lubridate package to supply vector of possible datetime character formats
+           TIMESTMP = parse_date_time(TIMESTMP,
+                                      orders = c("%m/%d/%Y %H:%M:%S",
+                                                 "%Y-%m-%d %H:%M:%S"),
+                                      tz="America/Los_Angeles"),
+           CON_ID = as.numeric(CON_ID),
            DET_ID = as.numeric(DET_ID),
            TAG_ID = as.numeric(TAG_ID),
-           CON_ID = as.numeric(CON_ID),
-           RECID = as.numeric(RECID),
            ERRORCODE = as.numeric(ERRORCODE),
+           ERRORMSG = as.character(ERRORMSG),
            LATENESS = as.numeric(LATENESS),
            SYSID = as.numeric(SYSID),
+           VEH_NUM = as.character(VEH_NUM),
            EVFLAG = as.numeric(EVFLAG)) %>%
     # Filter out erroneous dates created by null date values
     filter(TIMESTMP > "2017-01-01")
+  
+  print("pre filter")
+  print(loop_data)
     
     
   loop_data <- loop_data %>%
@@ -66,6 +74,8 @@ tps_process <- function(datapath) {
            ,!is.na(lat)
            ,!is.na(lon))
 
+  print("post filter")
+  print(loop_data)
   
   # Convert df to sf object
   loop_sf <- st_as_sf(loop_data,
@@ -99,7 +109,9 @@ html_process <- function(datapath) {
   # Convert to df, import / convert time to Los Angeles tz
   df <- as.data.frame(do.call(rbind, lapply(lat_lng, rbind)))
   colnames(df) <- c("Lat", "Lng", "Timestamp")
-  df$Timestamp <- as.POSIXct(strptime(df$Timestamp, format = "%d-%b-%y %H:%M:%S", "America/Honolulu"))
+  df$Timestamp <- as.POSIXct(df$Timestamp,
+                             format = "%d-%b-%y %H:%M:%S",
+                             tz = "UTC")
   # commenting out timezone conversion, since they are now giving it in LA timezone
   attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
   df$Lat <- as.numeric(as.character(df$Lat))

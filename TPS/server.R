@@ -26,7 +26,10 @@ geom_buff <- function(boundary, ft) {
 }
 
 # Function to process LAFD raw gps file into a spatial df
-lafd_process <- function(datapath) {
+lafd_process <- function(datapath, fname) {
+  
+  # Extract transponder
+  transponder <- strsplit(fname, "_")[[1]][1]
   
   # Read in LAFD Data
   lafd_data <- read.csv(datapath,
@@ -36,17 +39,26 @@ lafd_process <- function(datapath) {
   
   lafd_data <- lafd_data %>%
     mutate(incident = as.numeric(INCIDENT_NBR),
+           transponder = transponder,
            status = UNIT_STATUS,
            lat = as.numeric(LATITUDE),
            lon = as.numeric(LONGITUDE),
            timestmp = as.POSIXct(UTC_TIME,
                                  format = "%d-%b-%y %I.%M.%S.000000 %p",
                                  tz = "UTC")) %>%
+    dplyr::select(incident,
+                  transponder,
+                  status,
+                  lat,
+                  lon,
+                  timestmp) %>%
     # Filter for only those gps points enroute, excluding ONS = onsite
     filter(status == 'ENR')
   
   # Convert to Los Angeles tz
   attributes(lafd_data$timestmp)$tzone <- "America/Los_Angeles"
+  
+  print(lafd_data)
   
   lafd_sf <- st_as_sf(lafd_data,
                       coords=c("lon","lat"),
@@ -278,17 +290,59 @@ server <- function(input, output) {
     
     if(!is.null(input$lafd_files)) {
       
-      # html process function for all uploaded html files
-      lafd_points <- lapply(input$lafd_files$datapath, html_process)
+      # Set simplify = FALSE to return list instead of matrix
+      lafd_points <- mapply(lafd_process
+                            ,input$lafd_files$datapath
+                            ,input$lafd_files$name
+                            ,SIMPLIFY = FALSE
+      )
       
-      # add name of html file to list
-      names(lafd_points) <- input$lafd_files$name
+      # Combine list of dfs into one sf df
+      lafd_points <- do.call(rbind, lafd_points)
       
-      # Filter out points outside the project boundary
-      lafd_points <- lapply(lafd_points, sf_points_filter)
+      # Filter by project limits
+      lafd_points <- lafd_points[veniceblvd_buff,]
       
-      # Subset out NULL values
-      lafd_points <- lafd_points[-which(sapply(lafd_points, is.null))]
+      # NEED TO FIX THIS DPLYR FILTERING!!!
+      # Here i need to create the run #s, since an incident may have multiple runs
+      lafd_log <- lafd_points %>%
+        group_by(incident, transponder) %>%
+        arrange(timestmp) %>%
+        # Calculate lag time between each timestamp and one before it
+        mutate(timestmp_lag = ifelse(!is.na(lag(timestmp)),
+                                     timestmp - lag(timestmp),
+                                     0)) %>%
+        # Create break point where there is 3 min gap btw last event
+        mutate(run_flag = ifelse(timestmp_lag > 360, 1, 0)) %>%
+        ungroup() %>%
+        # Assign Run ID
+        mutate(run_id = 1 + cumsum(run_flag))
+      
+      print(lafd_log)
+      
+      # debugging
+      browser()
+      
+      # Filter for > 2 points
+      lafd_points <- lafd_points %>%
+        group_by(incident, transponder) %>%
+        filter(n() >= 2)
+      
+      # here i need to filter by (1) project area and (2) having at least two points in the area
+      
+      # COMMENTING OUT OLD HMTL CODE!!!
+      # # html process function for all uploaded html files
+      # #lafd_points <- lapply(input$lafd_files$datapath, html_process)
+      # 
+      # 
+      # # add name of html file to list
+      # names(lafd_points) <- input$lafd_files$name
+      # 
+      # # Filter out points outside the project boundary
+      # lafd_points <- lapply(lafd_points, sf_points_filter)
+      # 
+      # # Subset out NULL values
+      # lafd_points <- lafd_points[-which(sapply(lafd_points, is.null))]
       
       # Return final list of sf dfs
       return(lafd_points)

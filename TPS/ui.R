@@ -29,7 +29,8 @@ ui <- fluidPage(
       fileInput("lafd_files",
                 label = '2. Upload LAFD .html files',
                 multiple = TRUE,
-                accept = ".html"),
+                #accept = ".html"),
+                accept = ".csv"),
       
       # Upload summary results text
       textOutput('result'),

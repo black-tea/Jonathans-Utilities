@@ -25,6 +25,37 @@ geom_buff <- function(boundary, ft) {
   return(geom_wgs84)
 }
 
+# Function to process LAFD raw gps file into a spatial df
+lafd_process <- function(datapath) {
+  
+  # Read in LAFD Data
+  lafd_data <- read.csv(datapath,
+                        header = TRUE,
+                        sep = ',',
+                        stringsAsFactors = FALSE)
+  
+  lafd_data <- lafd_data %>%
+    mutate(incident = as.numeric(INCIDENT_NBR),
+           status = UNIT_STATUS,
+           lat = as.numeric(LATITUDE),
+           lon = as.numeric(LONGITUDE),
+           timestmp = as.POSIXct(UTC_TIME,
+                                 format = "%d-%b-%y %I.%M.%S.000000 %p",
+                                 tz = "UTC")) %>%
+    # Filter for only those gps points enroute, excluding ONS = onsite
+    filter(status == 'ENR')
+  
+  # Convert to Los Angeles tz
+  attributes(lafd_data$timestmp)$tzone <- "America/Los_Angeles"
+  
+  lafd_sf <- st_as_sf(lafd_data,
+                      coords=c("lon","lat"),
+                      crs=4326,
+                      remove=FALSE)
+  
+  return(lafd_sf)
+}
+
 # Function to process TPS csv file into a spatial df
 tps_process <- function(datapath) {
   

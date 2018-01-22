@@ -13,6 +13,7 @@ library(DT)
 library(fuzzyjoin)
 library(IRanges)
 library(lubridate)
+library(units)
 
 options(tibble.print_max = Inf)
 
@@ -303,30 +304,34 @@ server <- function(input, output) {
       # Filter by project limits
       lafd_points <- lafd_points[veniceblvd_buff,]
       
-      # NEED TO FIX THIS DPLYR FILTERING!!!
-      # Here i need to create the run #s, since an incident may have multiple runs
       lafd_log <- lafd_points %>%
         group_by(incident, transponder) %>%
+        # Filter for > 2 points
+        #filter(n() >= 2) %>%
         arrange(timestmp) %>%
         # Calculate lag time between each timestamp and one before it
         mutate(timestmp_lag = ifelse(!is.na(lag(timestmp)),
                                      timestmp - lag(timestmp),
                                      0)) %>%
-        # Create break point where there is 3 min gap btw last event
-        mutate(run_flag = ifelse(timestmp_lag > 360, 1, 0)) %>%
+        # Create break point at each new incident number 
+        # or where there is 3 min gap btw last event
+        mutate(run_flag = ifelse(timestmp_lag == 0 | timestmp_lag > 360,
+                                 1,
+                                 0)) %>%
         ungroup() %>%
         # Assign Run ID
-        mutate(run_id = 1 + cumsum(run_flag))
+        mutate(run_id = cumsum(run_flag)) %>%
+        group_by(run_id) %>%
+        # Filter for > 2 points
+        filter(n() >= 2) %>%
+        ungroup() %>%
+        mutate(run_id = cumsum(run_flag))
       
       print(lafd_log)
       
-      # debugging
-      browser()
+
       
-      # Filter for > 2 points
-      lafd_points <- lafd_points %>%
-        group_by(incident, transponder) %>%
-        filter(n() >= 2)
+
       
       # here i need to filter by (1) project area and (2) having at least two points in the area
       
@@ -345,7 +350,7 @@ server <- function(input, output) {
       # lafd_points <- lafd_points[-which(sapply(lafd_points, is.null))]
       
       # Return final list of sf dfs
-      return(lafd_points)
+      return(lafd_log)
       
     } else {
       return(NULL)
@@ -353,32 +358,73 @@ server <- function(input, output) {
     
   })
   
-  # Reactive expression for converting LAFD points to segments
+  # Reactive expression converting LAFD points to segments
   lafd_paths <- reactive({
     
-    if(!is.null(lafd_points())) {
-
-      # Extract points and filenames
-      pts <- lafd_points()
-      names <- names(lafd_points())
+    if(!is.null(lafd_points())){
       
-      # Set simplify = FALSE to return list instead of matrix
-      lafd_paths <- mapply(segmentize
-                                  ,pts
-                                  ,names
-                                  ,SIMPLIFY = FALSE
-                                  )
+      # Merge points into linestring
+      lafd_paths <- lafd_points() %>%
+        group_by(run_id, incident, transponder) %>%
+        summarize(#Incident = incident,
+                  #Transponder = transponder,
+                  Start = min(timestmp),
+                  End = max(timestmp),
+                  Time.Sec = difftime(max(timestmp),min(timestmp),units='secs'),
+                  do_union=FALSE) %>%
+        st_cast("LINESTRING") %>%
+        # Calculate length and speed on corridor
+        mutate(
+          Miles = round((st_length(st_transform(geometry, 2229))/5280),2),
+          MPH = round((Miles/(Time.Sec/3600)),2)
+        ) %>%
+        select(
+          run_id,
+          incident,
+          transponder,
+          Start,
+          End,
+          Miles,
+          MPH
+        )
       
-      # From sf dfs, get paths
-      lafd_paths_df <- do.call(rbind, lafd_paths)
+      # debugging
+      browser()
       
-      # Return formatted df
-      return(lafd_paths_df)
+      return(lafd_paths())
+      
       
     } else {
       return(NULL)
     }
   })
+  
+  # Reactive expression for converting LAFD points to segments
+  # lafd_paths <- reactive({
+  #   
+  #   if(!is.null(lafd_points())) {
+  # 
+  #     # Extract points and filenames
+  #     pts <- lafd_points()
+  #     names <- names(lafd_points())
+  #     
+  #     # Set simplify = FALSE to return list instead of matrix
+  #     lafd_paths <- mapply(segmentize
+  #                                 ,pts
+  #                                 ,names
+  #                                 ,SIMPLIFY = FALSE
+  #                                 )
+  #     
+  #     # From sf dfs, get paths
+  #     lafd_paths_df <- do.call(rbind, lafd_paths)
+  #     
+  #     # Return formatted df
+  #     return(lafd_paths_df)
+  #     
+  #   } else {
+  #     return(NULL)
+  #   }
+  # })
   
   ### All Reactive expressions involving the table joins
   # First table join combining LADOT & LAFD Data

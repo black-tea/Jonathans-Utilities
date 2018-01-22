@@ -81,6 +81,7 @@ bss_filtered <- bss %>%
   # Select only those with a length > 1/4 mi (402.336m)
   filter(st_length(.) > set_units(402.336, m))
 
+# need to add st_line_merge to aggregate blocks up into segments
 ```
 
 ```{r}

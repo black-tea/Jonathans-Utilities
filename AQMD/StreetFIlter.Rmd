@@ -1,0 +1,91 @@
+---
+title: "Selecting Streets"
+output: md_document
+---
+
+### Background
+For projects at LADOT, we are sometimes asked to look at projects at the corridor level and calculate metrics. One piece of this includes defining (and then building) "a corridor," which is a bit tricker than it sounds. Since all the street data we have at the block level, we need to aggreagate up to create corridors. How we do that is different depending on the task, but the example here required first filtering by street classification & street width, then filtering up from there.
+
+### Task Plan
+
+1. Filter out only those blocks within the 'Major Street' classification
+2. Join touching segments that share the street name
+3. Filter out segments longer than 1/4 mi.
+
+```{r}
+# load libraries
+library(sf)
+library(dplyr)
+library(leaflet)
+library(units)
+
+# import street data
+bss <- st_read("Data/Street_Pavement_Condition.shp")
+```
+
+There are actually several subclassifications within the 'Major Street' classification. I want them all.
+
+```{r}
+fname = system.file("shape/nc.shp", package = "sf")
+nc = read_sf(fname)
+print(nc, n = 3)
+```
+
+```{r}
+pts <- st_touches(nc)
+pts <- st
+```
+
+
+
+```{r}
+bss_filtered <- bss %>%
+  filter(FID %in% c(6600,7250))
+
+plot(st_geometry(bss_filtered))
+```
+```{r}
+m1 = cbind(c(0, 0, 1, 0), c(0, 1, 1, 0))
+m2 = cbind(c(0, 1, 1, 0), c(0, 0, 1, 0))
+pol = st_sfc(st_polygon(list(m1)), st_polygon(list(m2)))
+set.seed(1985)
+d = data.frame(matrix(runif(15), ncol = 3))
+p = st_as_sf(x = d, coords = 1:2)
+
+```
+
+
+```{r}
+bss_filtered <- bss %>%
+  select(
+    SECT_ID,
+    STREET_DES,
+    NAME,
+    FROM_,
+    TO_,
+    ZLENGTH) %>%
+  filter(STREET_DES %in% c(
+    'Divided Major Highway - Class II',
+    'Major Highway - Class I',
+    'Major Highway - Class II',
+    'Modified Major Highway',
+    'Scenic Major Highway - Class I',
+    'Scenic Major Highway - Class II',
+    'Und. or Prop. Major Hwy - Class II',
+    'Und. or Prop. Scenic Major Highway - Class II')) %>%
+  # Group & Merge by 
+  group_by(NAME) %>%
+  summarize() %>%
+  # Cast sfc_geometry mix to sfc_multilinestring
+  st_cast() %>%
+  # Select only those with a length > 1/4 mi (402.336m)
+  filter(st_length(.) > set_units(402.336, m))
+
+```
+
+```{r}
+leaflet() %>%
+  addTiles() %>%
+  addPolylines(data=bss_filtered)
+```
+

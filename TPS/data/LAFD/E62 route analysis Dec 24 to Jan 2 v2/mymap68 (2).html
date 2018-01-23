@@ -1,0 +1,131 @@
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<title>Google Maps - pygmaps </title>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=visualization&sensor=true_or_false"></script>
+<script type="text/javascript">
+	function initialize() {
+		var centerlatlng = new google.maps.LatLng(33.989730, -118.427177);
+		var myOptions = {
+			zoom: 14,
+			center: centerlatlng,
+			mapTypeId: google.maps.MapTypeId.ROADMAP
+		};
+		var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+		var latlng = new google.maps.LatLng(34.005775, -118.428368);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005775, -118.428368, 01-JAN-18 09.03.05.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005880, -118.428172);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005880, -118.428172, 01-JAN-18 09.03.05.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005810, -118.428360);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005810, -118.428360, 01-JAN-18 09.04.38.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005806, -118.428360);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005806, -118.428360, 01-JAN-18 09.05.40.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005779, -118.428429);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005779, -118.428429, 01-JAN-18 09.06.11.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.003784, -118.426994);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.003784, -118.426994, 01-JAN-18 09.06.42.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.002144, -118.424980);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.002144, -118.424980, 01-JAN-18 09.07.13.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.004257, -118.421417);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.004257, -118.421417, 01-JAN-18 09.07.44.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.002548, -118.419777);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.002548, -118.419777, 01-JAN-18 09.08.15.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.001389, -118.418884);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.001389, -118.418884, 01-JAN-18 09.08.34.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.001389, -118.418884);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.001389, -118.418884, 01-JAN-18 09.08.34.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.001263, -118.418808);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.001263, -118.418808, 01-JAN-18 09.08.37.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+	}
+</script>
+</head>
+<body style="margin:0px; padding:0px;" onload="initialize()">
+	<div id="map_canvas" style="width: 100%; height: 100%;"></div>
+</body>
+</html>

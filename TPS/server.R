@@ -9,7 +9,7 @@ library(stringr)
 library(sf)
 library(leaflet)
 library(dplyr)
-library(DT)
+library(DT) # Install using dev_tools::github
 library(fuzzyjoin)
 library(IRanges)
 library(lubridate)
@@ -29,8 +29,8 @@ geom_buff <- function(boundary, ft) {
 # Function to process LAFD raw gps file into a spatial df
 lafd_process <- function(datapath, fname) {
   
-  # Extract transponder
-  transponder <- strsplit(fname, "_")[[1]][1]
+  # Extract veh_id
+  veh_id <- strsplit(fname, "_")[[1]][1]
   
   # Read in LAFD Data
   lafd_data <- read.csv(datapath,
@@ -39,16 +39,16 @@ lafd_process <- function(datapath, fname) {
                         stringsAsFactors = FALSE)
   
   lafd_data <- lafd_data %>%
-    mutate(incident = as.numeric(INCIDENT_NBR),
-           transponder = transponder,
+    mutate(incident_id = as.numeric(INCIDENT_NBR),
+           veh_id = veh_id,
            status = UNIT_STATUS,
            lat = as.numeric(LATITUDE),
            lon = as.numeric(LONGITUDE),
            timestmp = as.POSIXct(UTC_TIME,
                                  format = "%d-%b-%y %I.%M.%S.000000 %p",
                                  tz = "UTC")) %>%
-    dplyr::select(incident,
-                  transponder,
+    dplyr::select(incident_id,
+                  veh_id,
                   status,
                   lat,
                   lon,
@@ -79,9 +79,6 @@ tps_process <- function(datapath) {
                         stringsAsFactors = FALSE
   )
   
-  #print("pre pre")
-  #print(loop_data)
-  
   loop_data <- loop_data %>%
     # Convert timestamp to date/time value
     mutate(RECID = as.numeric(RECID),
@@ -101,10 +98,6 @@ tps_process <- function(datapath) {
            EVFLAG = as.numeric(EVFLAG)) %>%
     # Filter out erroneous dates created by null date values
     filter(TIMESTMP > "2017-01-01")
-  
-  #print("pre filter")
-  #print(loop_data)
-    
     
   loop_data <- loop_data %>%
     # Join to detector location information
@@ -114,12 +107,10 @@ tps_process <- function(datapath) {
       lat = as.numeric(lat),
       lon = as.numeric(lon)
     ) %>%
+    dplyr::rename('tps_tag_id' = 'TAG_ID') %>%
     filter(ERRORCODE %in% c(68111,68112)
            ,!is.na(lat)
            ,!is.na(lon))
-
-  #print("post filter")
-  #print(loop_data)
   
   # Convert df to sf object
   loop_sf <- st_as_sf(loop_data,
@@ -131,42 +122,42 @@ tps_process <- function(datapath) {
 }
 
 # Function to process HTML data into spatial df
-html_process <- function(datapath) {  
-  
-  # Read the HTML file
-  html_data <- read_html(datapath)
-  
-  # Process html data
-  html_data %>%
-    html_nodes('script') %>%
-    # Extract second 'script' node
-    extract2(2) %>%
-    html_text %>%
-    # Regex match formula
-    str_match_all('title: "(.*)"') %>%
-    # Pull out content within ()
-    extract2(1) -> lat_lng
-  
-  # Grab second column, split
-  lat_lng <- strsplit(lat_lng[,2], ", ")
-  
-  # Convert to df, import / convert time to Los Angeles tz
-  df <- as.data.frame(do.call(rbind, lapply(lat_lng, rbind)))
-  colnames(df) <- c("Lat", "Lng", "Timestamp")
-  df$Timestamp <- as.POSIXct(df$Timestamp, format = "%d-%b-%y %I.%M.%S.000000 %p", "UTC")
-  # commenting out timezone conversion, since they are now giving it in LA timezone
-  attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
-  df$Lat <- as.numeric(as.character(df$Lat))
-  df$Lng <- as.numeric(as.character(df$Lng))
-  
-  # Convert df to sf object
-  sf_df <- st_as_sf(df,
-                    coords=c("Lng","Lat"),
-                    crs=4326,
-                    remove=FALSE)
-  return(sf_df)
-  
-}
+# html_process <- function(datapath) {  
+#   
+#   # Read the HTML file
+#   html_data <- read_html(datapath)
+#   
+#   # Process html data
+#   html_data %>%
+#     html_nodes('script') %>%
+#     # Extract second 'script' node
+#     extract2(2) %>%
+#     html_text %>%
+#     # Regex match formula
+#     str_match_all('title: "(.*)"') %>%
+#     # Pull out content within ()
+#     extract2(1) -> lat_lng
+#   
+#   # Grab second column, split
+#   lat_lng <- strsplit(lat_lng[,2], ", ")
+#   
+#   # Convert to df, import / convert time to Los Angeles tz
+#   df <- as.data.frame(do.call(rbind, lapply(lat_lng, rbind)))
+#   colnames(df) <- c("Lat", "Lng", "Timestamp")
+#   df$Timestamp <- as.POSIXct(df$Timestamp, format = "%d-%b-%y %I.%M.%S.000000 %p", "UTC")
+#   # commenting out timezone conversion, since they are now giving it in LA timezone
+#   attributes(df$Timestamp)$tzone <- "America/Los_Angeles"  
+#   df$Lat <- as.numeric(as.character(df$Lat))
+#   df$Lng <- as.numeric(as.character(df$Lng))
+#   
+#   # Convert df to sf object
+#   sf_df <- st_as_sf(df,
+#                     coords=c("Lng","Lat"),
+#                     crs=4326,
+#                     remove=FALSE)
+#   return(sf_df)
+#   
+# }
 
 # Function to filter points to project boundary
 sf_points_filter <- function(spatial_df) {
@@ -183,44 +174,44 @@ sf_points_filter <- function(spatial_df) {
   
 }
 
-# Function to create segments
-segmentize <- function(spatial_df, fname) {
-  
-  # Create Polylines
-  if(!is.null(spatial_df)){
-    
-    # Merge points into linestring
-    lafd_path <- spatial_df %>%
-      summarize(start = min(Timestamp),
-                end = max(Timestamp),
-                Time.Sec = difftime(max(Timestamp),min(Timestamp),units='secs'),
-                do_union=FALSE) %>%
-      st_cast("LINESTRING") %>%
-      mutate(
-        File = fname
-      )
-    
-    # Add length and reorder columns
-    lafd_path <- lafd_path %>%
-      mutate(
-        Miles = round((st_length(st_transform(lafd_path, 2229))/5280),2),
-        MPH = round((Miles/(Time.Sec/3600)),2)
-      ) %>%
-      select(
-        File,
-        start,
-        end,
-        Miles,
-        MPH
-      )
-    
-    # Return resulting segment
-    return(lafd_path)
-  } else {
-    return(NULL)
-  }
-  
-}
+# # Function to create segments
+# segmentize <- function(spatial_df, fname) {
+#   
+#   # Create Polylines
+#   if(!is.null(spatial_df)){
+#     
+#     # Merge points into linestring
+#     lafd_path <- spatial_df %>%
+#       summarize(start = min(Timestamp),
+#                 end = max(Timestamp),
+#                 Time.Sec = difftime(max(Timestamp),min(Timestamp),units='secs'),
+#                 do_union=FALSE) %>%
+#       st_cast("LINESTRING") %>%
+#       mutate(
+#         File = fname
+#       )
+#     
+#     # Add length and reorder columns
+#     lafd_path <- lafd_path %>%
+#       mutate(
+#         Miles = round((st_length(st_transform(lafd_path, 2229))/5280),2),
+#         MPH = round((Miles/(Time.Sec/3600)),2)
+#       ) %>%
+#       select(
+#         File,
+#         start,
+#         end,
+#         Miles,
+#         MPH
+#       )
+#     
+#     # Return resulting segment
+#     return(lafd_path)
+#   } else {
+#     return(NULL)
+#   }
+#   
+# }
 
 # Function to create Icons for map
 createIcon <- function(color) {
@@ -236,12 +227,16 @@ createIcon <- function(color) {
   
 }
  
-### Load and Prep Other Data
+### Load and Prep Data
 # Venice Boundary
 veniceblvd <- st_read('data/eval_extent/tsp-extent_line.shp')
 veniceblvd_buff <- geom_buff(veniceblvd, 100)
 # Loop Detector Location 
 detectors <- read.csv('data/signal/detectors.csv', header = TRUE, sep = ',', stringsAsFactors = FALSE)
+# Loop Tag ID Pairs
+lafd_veh_id <- c('e62', 'ra62')
+tps_tag_id <- c(6598, 5614)
+tag_tbl <- data.frame(tps_tag_id, lafd_veh_id)
 
 ### Server Code
 server <- function(input, output) {
@@ -258,7 +253,8 @@ server <- function(input, output) {
       tps_log <- do.call(rbind, tps_log)
       
       tps_log <- tps_log %>%
-        arrange(TIMESTMP) %>%
+        group_by(tps_tag_id) %>%
+        arrange(TIMESTMP, .by_group = TRUE) %>%
         # Calculate lag time between each timestamp and one before it
         mutate(TIMESTMP_LAG = ifelse(!is.na(lag(TIMESTMP)),
                                      TIMESTMP - lag(TIMESTMP),
@@ -276,7 +272,7 @@ server <- function(input, output) {
     
     # Group by run, get start/end
     tps_runs <- tps_log() %>%
-      group_by(run_id) %>%
+      group_by(run_id, tps_tag_id) %>%
       summarise(
         start = min(TIMESTMP),
         end = max(TIMESTMP)
@@ -305,15 +301,14 @@ server <- function(input, output) {
       lafd_points <- lafd_points[veniceblvd_buff,]
       
       lafd_log <- lafd_points %>%
-        group_by(incident, transponder) %>%
-        # Filter for > 2 points
-        #filter(n() >= 2) %>%
-        arrange(timestmp) %>%
+        dplyr::group_by(incident_id, veh_id) %>%
+        # add .by_group to preserve previous grouping
+        arrange(timestmp, .by_group = TRUE) %>%
         # Calculate lag time between each timestamp and one before it
         mutate(timestmp_lag = ifelse(!is.na(lag(timestmp)),
                                      timestmp - lag(timestmp),
                                      0)) %>%
-        # Create break point at each new incident number 
+        # Create break point at each new incident_id number 
         # or where there is 3 min gap btw last event
         mutate(run_flag = ifelse(timestmp_lag == 0 | timestmp_lag > 360,
                                  1,
@@ -326,10 +321,6 @@ server <- function(input, output) {
         filter(n() >= 2) %>%
         ungroup() %>%
         mutate(run_id = cumsum(run_flag))
-      
-      print(lafd_log)
-      
-
       
 
       
@@ -365,11 +356,11 @@ server <- function(input, output) {
       
       # Merge points into linestring
       lafd_paths <- lafd_points() %>%
-        group_by(run_id, incident, transponder) %>%
-        summarize(#Incident = incident,
-                  #Transponder = transponder,
-                  Start = min(timestmp),
-                  End = max(timestmp),
+        group_by(run_id, incident_id, veh_id) %>%
+        summarize(#incident_id = incident_id,
+                  #veh_id = veh_id,
+                  start = min(timestmp),
+                  end = max(timestmp),
                   Time.Sec = difftime(max(timestmp),min(timestmp),units='secs'),
                   do_union=FALSE) %>%
         st_cast("LINESTRING") %>%
@@ -380,18 +371,18 @@ server <- function(input, output) {
         ) %>%
         select(
           run_id,
-          incident,
-          transponder,
-          Start,
-          End,
+          incident_id,
+          veh_id,
+          start,
+          end,
           Miles,
           MPH
         )
       
       # debugging
-      browser()
+      #browser()
       
-      return(lafd_paths())
+      return(lafd_paths)
       
       
     } else {
@@ -433,18 +424,30 @@ server <- function(input, output) {
     # Only process if both LAFD & LADOT data is not null
     if((!is.null(tps_runs()))&(!is.null(lafd_points()))) {
       
-      # Debugging
-      #print(tps_runs())
-      print(lafd_paths())
-      
-      # Format time, remove geometry column
+      # Format time, remove geometry column, add tps_tag_id
       lafd_paths_tbl <- lafd_paths() %>%
-        st_set_geometry(NULL) 
+        st_set_geometry(NULL) %>%
+        left_join(tag_tbl, by=c('veh_id' = 'lafd_veh_id')) %>%
+        mutate(start = as.numeric(start),
+               end = as.numeric(end))
+      
+      tps_runs_tbl <- tps_runs() %>%
+        mutate(start = as.numeric(start),
+               end = as.numeric(end))
+      
+      # Testing
+      #browser()
+      
+      # FIRST, JOIN veh_id name to id table, so rolling join is based on ID and time
+      # https://www.r-bloggers.com/understanding-data-table-rolling-joins/
 
       # Group by run, get start/end
-      join_tbl <- tps_runs() %>%
+      join_tbl <- tps_runs_tbl %>%
         # interval join from 'fuzzyjoin' package to identify overlap between time intervals
-        interval_full_join(lafd_paths_tbl)
+        genome_full_join(lafd_paths_tbl, by=c("tps_tag_id","start",'end'))
+      
+      # Testing
+      browser()
       
       # Return joined table
       return(join_tbl)
@@ -539,6 +542,20 @@ server <- function(input, output) {
   })
   
   ### UI Table Output
+  # Editable Tag Lookup Table
+  output$tagtable <- DT::renderDataTable({
+    tag_tbl <- tag_tbl %>%
+      dplyr::rename('TPS Tag ID' = 'tps_tag_id') %>%
+      dplyr::rename('LAFD Vehicle ID' = 'lafd_veh_id')
+    
+    return(tag_tbl)
+      
+  },
+  editable = TRUE)
+  
+  # see here: https://yihui.shinyapps.io/DT-edit/
+  # for how to update data in the server logic
+  
   # Matched Rows
   output$matchtable <- DT::renderDataTable({
 

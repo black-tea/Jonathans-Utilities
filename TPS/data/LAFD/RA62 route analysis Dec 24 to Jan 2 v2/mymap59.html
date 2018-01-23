@@ -1,0 +1,113 @@
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<title>Google Maps - pygmaps </title>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=visualization&sensor=true_or_false"></script>
+<script type="text/javascript">
+	function initialize() {
+		var centerlatlng = new google.maps.LatLng(33.989730, -118.427177);
+		var myOptions = {
+			zoom: 14,
+			center: centerlatlng,
+			mapTypeId: google.maps.MapTypeId.ROADMAP
+		};
+		var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+		var latlng = new google.maps.LatLng(34.005718, -118.428406);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005718, -118.428406, 31-DEC-17 09.30.52.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005718, -118.428398);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005718, -118.428398, 31-DEC-17 09.31.24.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005711, -118.428383);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005711, -118.428383, 31-DEC-17 09.31.55.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005711, -118.428375);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005711, -118.428375, 31-DEC-17 09.32.26.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.005714, -118.428368);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.005714, -118.428368, 31-DEC-17 09.32.57.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.006065, -118.428772);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.006065, -118.428772, 31-DEC-17 09.33.28.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.004501, -118.432121);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.004501, -118.432121, 31-DEC-17 09.33.59.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.003803, -118.433495);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.003803, -118.433495, 31-DEC-17 09.34.30.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.001865, -118.437317);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.001865, -118.437317, 31-DEC-17 09.35.01.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+		var latlng = new google.maps.LatLng(34.000599, -118.437424);
+		var img = new google.maps.MarkerImage('http://www.googlemapsmarkers.com/v1/FF6666/');
+		var marker = new google.maps.Marker({
+		title: "34.000599, -118.437424, 31-DEC-17 09.35.26.000000 AM UTC",
+		icon: img,
+		position: latlng
+		});
+		marker.setMap(map);
+
+	}
+</script>
+</head>
+<body style="margin:0px; padding:0px;" onload="initialize()">
+	<div id="map_canvas" style="width: 100%; height: 100%;"></div>
+</body>
+</html>

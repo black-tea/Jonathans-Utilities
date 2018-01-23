@@ -36,25 +36,6 @@ pts <- st_touches(nc)
 pts <- st
 ```
 
-
-
-```{r}
-bss_filtered <- bss %>%
-  filter(FID %in% c(6600,7250))
-
-plot(st_geometry(bss_filtered))
-```
-```{r}
-m1 = cbind(c(0, 0, 1, 0), c(0, 1, 1, 0))
-m2 = cbind(c(0, 1, 1, 0), c(0, 0, 1, 0))
-pol = st_sfc(st_polygon(list(m1)), st_polygon(list(m2)))
-set.seed(1985)
-d = data.frame(matrix(runif(15), ncol = 3))
-p = st_as_sf(x = d, coords = 1:2)
-
-```
-
-
 ```{r}
 bss_filtered <- bss %>%
   select(
@@ -85,8 +66,17 @@ bss_filtered <- bss %>%
 ```
 
 ```{r}
+bss_merge <- st_line_merge(bss_filtered)
+```
+
+
+```{r}
 leaflet() %>%
   addTiles() %>%
-  addPolylines(data=bss_filtered)
+  addPolylines(data=bss_merge)
+```
+
+```{r}
+st_write(bss_merge, 'bss_major.shp')
 ```
 

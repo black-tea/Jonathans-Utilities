@@ -64,6 +64,7 @@ ui <- fluidPage(
         #DT::dataTableOutput("contents"),
         tabsetPanel(
           #id = 'contents',
+          tabPanel("LAFD - LADOT Tags", DT::dataTableOutput("tagtable")),
           tabPanel("Matched Runs", DT::dataTableOutput("matchtable")),
           tabPanel("Unmatched TPS Runs", DT::dataTableOutput("tpstable")),
           tabPanel("Unmatched LAFD Runs", DT::dataTableOutput("lafdtable"))

@@ -38,7 +38,7 @@ ui <- fluidPage(
       # Horizontal line 
       tags$hr(),
       
-      h5(tags$b('3. Select table row(s) to view in the map')),
+      h5(tags$b('3. Select table row to view in the map')),
       
       # Horizontal line
       tags$hr(),
@@ -65,8 +65,8 @@ ui <- fluidPage(
         tabsetPanel(
           #id = 'contents',
           tabPanel("Matched Runs", DT::dataTableOutput("matchtable")),
-          tabPanel("Unmatched TPS Runs", DT::dataTableOutput("tpstable")),
-          tabPanel("Unmatched LAFD Runs", DT::dataTableOutput("lafdtable"))
+          tabPanel("All Runs", DT::dataTableOutput("alltable"))
+          #tabPanel("Unmatched LAFD Runs", DT::dataTableOutput("lafdtable"))
         )
     
       )

@@ -17,6 +17,16 @@ library(units)
 
 options(tibble.print_max = Inf)
 
+### Load and Prep Data
+# Venice Boundary
+veniceblvd <- st_read('data/eval_extent/tsp-extent_line.shp')
+# Loop Detector Location 
+detectors <- read.csv('data/signal/detectors.csv', header = TRUE, sep = ',', stringsAsFactors = FALSE)
+# Loop Tag ID Pairs
+lafd_veh_id <- c('e62', 'ra62')
+tps_tag_id <- c(6598, 5614)
+tag_tbl <- data.frame(tps_tag_id, lafd_veh_id)
+
 ### Support Functions
 # Function to buffer in Nad83 and Return in WGS84
 geom_buff <- function(boundary, ft) {
@@ -149,15 +159,7 @@ createIcon <- function(color) {
 }
  
 ### Load and Prep Data
-# Venice Boundary
-veniceblvd <- st_read('data/eval_extent/tsp-extent_line.shp')
 veniceblvd_buff <- geom_buff(veniceblvd, 100)
-# Loop Detector Location 
-detectors <- read.csv('data/signal/detectors.csv', header = TRUE, sep = ',', stringsAsFactors = FALSE)
-# Loop Tag ID Pairs
-lafd_veh_id <- c('e62', 'ra62')
-tps_tag_id <- c(6598, 5614)
-tag_tbl <- data.frame(tps_tag_id, lafd_veh_id)
 
 ### Server Code
 server <- function(input, output) {
@@ -342,10 +344,35 @@ server <- function(input, output) {
           end.x = as.POSIXct(end.x, origin="1970-01-01"),
           start.y = as.POSIXct(start.y, origin="1970-01-01"),
           end.y = as.POSIXct(end.y, origin="1970-01-01")
-        )
-      
-      # Testing
-      #browser()
+        ) %>%
+        # Convert to character for display
+        mutate(
+          start.x = as.character(start.x),
+          end.x = as.character(end.x),
+          start.y = as.character(start.y),
+          end.y = as.character(end.y)
+        ) %>%
+        select(
+          run_id.x,
+          tps_tag_id.x,
+          start.x,
+          end.x,
+          incident_id,
+          veh_id,
+          start.y,
+          end.y,
+          Miles,
+          MPH
+        ) %>%
+        dplyr::rename('TPS.RunID' = 'run_id.x') %>%
+        dplyr::rename('TPS.TagID' = 'tps_tag_id.x') %>%
+        dplyr::rename('TPS.Start' = 'start.x') %>%
+        dplyr::rename('TPS.End' = 'end.x') %>%
+        dplyr::rename('Incident' = 'incident_id') %>%
+        dplyr::rename('Veh.ID' = 'veh_id') %>%
+        dplyr::rename('LAFD.Start' = 'start.y') %>%
+        dplyr::rename('LAFD.End' = 'end.y')
+        
       
       # Return joined table
       return(join_tbl)
@@ -356,67 +383,55 @@ server <- function(input, output) {
 
   })
   
-  # # Post-Join match table
-  # match_tbl <- reactive({
+  # Post-Join match table
+  match_tbl <- reactive({
+
+    match_tbl <- join_tbl() %>%
+      filter(!is.na(TPS.RunID)) %>%
+      filter(!is.na(Incident)) 
+      
+    # Return formatted table
+    return(match_tbl)
+
+  })
+  
+  # # Post-Join LAFD table
+  # lafd_tbl <- reactive({
   #   
-  #   match_tbl <- join_tbl() %>%
-  #     filter(!is.na(run_id)) %>%
-  #     filter(!is.na(File)) %>%
+  #   lafd_tbl <- join_tbl() %>%
+  #     filter(is.na(run_id)) %>%
+  #     select(File, start.y, end.y, Miles, MPH) %>%
   #     mutate(
-  #       start.x = as.character(start.x),
-  #       end.x = as.character(end.x),
   #       start.y = as.character(start.y),
   #       end.y = as.character(end.y)
   #     ) %>%
-  #     dplyr::rename('TPS Run ID' = 'run_id') %>%
-  #     dplyr::rename('TPS Start' = 'start.x') %>%
-  #     dplyr::rename('TPS End' = 'end.x') %>%
-  #     dplyr::rename('LAFD File' = 'File') %>%
-  #     dplyr::rename('LAFD Start' = 'start.y') %>%
-  #     dplyr::rename('LAFD End' = 'end.y')
+  #     dplyr::rename('File' = 'File') %>%
+  #     dplyr::rename('Start' = 'start.y') %>%
+  #     dplyr::rename('End' = 'end.y')
   #   
   #   # Return formatted table
-  #   return(match_tbl)
+  #   return(lafd_tbl)
   #   
   # })
   
-  # Post-Join LAFD table
-  lafd_tbl <- reactive({
-    
-    lafd_tbl <- join_tbl() %>%
-      filter(is.na(run_id)) %>%
-      select(File, start.y, end.y, Miles, MPH) %>%
-      mutate(
-        start.y = as.character(start.y),
-        end.y = as.character(end.y)
-      ) %>%
-      dplyr::rename('File' = 'File') %>%
-      dplyr::rename('Start' = 'start.y') %>%
-      dplyr::rename('End' = 'end.y')
-    
-    # Return formatted table
-    return(lafd_tbl)
-    
-  })
-  
-  # Post-Join LADOT TPS table
-  tps_tbl <- reactive({
-    
-    tps_tbl <- join_tbl() %>%
-      filter(is.na(File)) %>%
-      select(run_id, start.x, end.x) %>%
-      mutate(
-        start.x = as.character(start.x),
-        end.x = as.character(end.x)
-      ) %>%
-      dplyr::rename('Run ID' = 'run_id') %>%
-      dplyr::rename('Start' = 'start.x') %>%
-      dplyr::rename('End' = 'end.x')
-    
-    # Return formatted table
-    return(tps_tbl)
-    
-  })
+  # # Post-Join LADOT TPS table
+  # tps_tbl <- reactive({
+  #   
+  #   tps_tbl <- join_tbl() %>%
+  #     filter(is.na(File)) %>%
+  #     select(run_id, start.x, end.x) %>%
+  #     mutate(
+  #       start.x = as.character(start.x),
+  #       end.x = as.character(end.x)
+  #     ) %>%
+  #     dplyr::rename('Run ID' = 'run_id') %>%
+  #     dplyr::rename('Start' = 'start.x') %>%
+  #     dplyr::rename('End' = 'end.x')
+  #   
+  #   # Return formatted table
+  #   return(tps_tbl)
+  #   
+  # })
   
 
   
@@ -460,38 +475,8 @@ server <- function(input, output) {
     # If not null, process files and output
     if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
       
-      match_tbl <- join_tbl() %>%
-        filter(!is.na(run_id.x)) %>%
-        filter(!is.na(run_id.y)) %>%
-        mutate(
-          start.x = as.character(start.x),
-          end.x = as.character(end.x),
-          start.y = as.character(start.y),
-          end.y = as.character(end.y)
-        ) %>%
-        select(
-          run_id.x,
-          tps_tag_id.x,
-          start.x,
-          end.x,
-          incident_id,
-          veh_id,
-          start.y,
-          end.y,
-          Miles,
-          MPH
-        ) %>%
-        dplyr::rename('TPS.RunID' = 'run_id.x') %>%
-        dplyr::rename('TPS Tag ID' = 'tps_tag_id.x') %>%
-        dplyr::rename('TPS Start' = 'start.x') %>%
-        dplyr::rename('TPS End' = 'end.x') %>%
-        dplyr::rename('Incident' = 'incident_id') %>%
-        dplyr::rename('Veh ID' = 'veh_id') %>%
-        dplyr::rename('LAFD Start' = 'start.y') %>%
-        dplyr::rename('LAFD End' = 'end.y')
-      
       # Return formatted table
-      return(match_tbl)
+      return(match_tbl())
       
     } else {
       return(NULL)
@@ -502,12 +487,12 @@ server <- function(input, output) {
   selection='single')
   
   # Unmatched LAFD Table
-  output$lafdtable <- DT::renderDataTable({
+  output$alltable <- DT::renderDataTable({
     
     # Process once both inputs have been uploaded
     if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
       
-      return(lafd_tbl())
+      return(join_tbl())
       
     } else {
       return(NULL)
@@ -517,27 +502,27 @@ server <- function(input, output) {
   # Restrict it to only one row selected at a time
   selection='single')
   
-  # Unmatched TPS Logs
-  output$tpstable <- DT::renderDataTable({
-    
-    # Process once both inputs have been uploaded
-    if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
-      
-      return(tps_tbl())
-      
-    } else {
-      return(NULL)
-    }
-    
-  },
-  # Restrict it to only one row selected at a time
-  selection='single')
+  # # Unmatched TPS Logs
+  # output$tpstable <- DT::renderDataTable({
+  #   
+  #   # Process once both inputs have been uploaded
+  #   if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
+  #     
+  #     return(tps_tbl())
+  #     
+  #   } else {
+  #     return(NULL)
+  #   }
+  #   
+  # },
+  # # Restrict it to only one row selected at a time
+  # selection='single')
   
 
   
   ### Reactive Expressions to get data from selected rows
   # List of all points/paths from selected rows of matched data
-  join_pts_s <- reactive({
+  match_pts_s <- reactive({
     if(!is.null(input$matchtable_rows_selected)){
       
       # Get selected rows
@@ -549,20 +534,22 @@ server <- function(input, output) {
         filter(run_id == tps_run_num)
       
       # LAFD Points
-      lafd_map <- as.character(match_tbl()[row_num, 4])
-      lafd_points_s <- lafd_points()[[lafd_map]]
+      lafd_incident <- as.numeric(match_tbl()[row_num, 5])
+      lafd_veh <- as.character(match_tbl()[row_num,6])
+      lafd_points_s <- lafd_points() %>%
+        filter(incident_id == lafd_incident & veh_id == lafd_veh)
       
       # LAFD Paths
-      lafd_paths_df_s <- segmentize(lafd_points_s, lafd_map)
+      #lafd_paths_df_s <- segmentize(lafd_points_s, lafd_map)
       
       # Create list of data
-      join_pts_s <- list(
+      match_pts_s <- list(
         tps_points_s = tps_points_s,
-        lafd_points_s = lafd_points_s,
-        lafd_paths_df_s = lafd_paths_df_s
+        lafd_points_s = lafd_points_s#,
+        #lafd_paths_df_s = lafd_paths_df_s
       )
       
-      return(join_pts_s)
+      return(match_pts_s)
       
     } else {
       return(NULL)
@@ -647,33 +634,33 @@ server <- function(input, output) {
     if(!is.null(input$matchtable_rows_selected)) {
 
       #lafd_points_s <- lafd_points_s()
-      join_pts_s <- join_pts_s()
+      match_pts_s <- match_pts_s()
 
       # Erase markers/shapes and add new lafd ones
       leafletProxy("map") %>%
         clearShapes() %>%
         clearMarkers() %>%
-        addPolylines(
-          color = '#fc0307',
-          weight = 3,
-          opacity = 1,
-          data = join_pts_s$lafd_paths_df_s
-        ) %>%
+        # addPolylines(
+        #   color = '#fc0307',
+        #   weight = 3,
+        #   opacity = 1,
+        #   data = match_pts_s$lafd_paths_df_s
+        # ) %>%
         addAwesomeMarkers(
-          data = join_pts_s$lafd_points_s
+          data = match_pts_s$lafd_points_s
           ,icon = createIcon('red')
-          ,label = as.character(join_pts_s$lafd_points_s$Timestamp)
+          ,label = as.character(match_pts_s$lafd_points_s$timestmp)
         ) %>%
         addAwesomeMarkers(
-          data = join_pts_s$tps_points_s
+          data = match_pts_s$tps_points_s
           ,icon = createIcon('blue')
-          ,label = ~as.character(join_pts_s$tps_points_s$TIMESTMP)
+          ,label = ~as.character(match_pts_s$tps_points_s$TIMESTMP)
         ) %>%
         # Update the map zoom bounds
-        fitBounds(lng1 = max(join_pts_s$lafd_points_s$Lng),
-                  lat1 = max(join_pts_s$lafd_points_s$Lat),
-                  lng2 = min(join_pts_s$lafd_points_s$Lng),
-                  lat2 = min(join_pts_s$lafd_points_s$Lat)
+        fitBounds(lng1 = max(match_pts_s$lafd_points_s$lon),
+                  lat1 = max(match_pts_s$lafd_points_s$lat),
+                  lng2 = min(match_pts_s$lafd_points_s$lon),
+                  lat2 = min(match_pts_s$lafd_points_s$lat)
         )
     }
   })
@@ -701,10 +688,10 @@ server <- function(input, output) {
           ,label = as.character(lafd_points_s$Timestamp)
         ) %>%
         # Update the map zoom bounds
-        fitBounds(lng1 = max(lafd_points_s$Lng),
-                  lat1 = max(lafd_points_s$Lat),
-                  lng2 = min(lafd_points_s$Lng),
-                  lat2 = min(lafd_points_s$Lat)
+        fitBounds(lng1 = max(lafd_points_s$lon),
+                  lat1 = max(lafd_points_s$lat),
+                  lng2 = min(lafd_points_s$lon),
+                  lat2 = min(lafd_points_s$lat)
                   )
     }
   })

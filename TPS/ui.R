@@ -32,7 +32,7 @@ ui <- fluidPage(
              # Upload summary results text
              #textOutput('result'),
              
-             h5(tags$b('Export all clipped data')),
+             h5(tags$b('Export Run Data')),
              
              # Download button
              downloadButton('downloadData', 'Download')

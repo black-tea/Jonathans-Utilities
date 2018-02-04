@@ -345,6 +345,13 @@ server <- function(input, output) {
           start.y = as.POSIXct(start.y, origin="1970-01-01"),
           end.y = as.POSIXct(end.y, origin="1970-01-01")
         ) %>%
+        mutate(
+          time = ifelse(!is.na(start.x),
+                        start.x,
+                        start.y)
+        ) %>%
+        arrange(time) %>%
+        #mutate(RunID = row_number(time)) %>%
         # Convert to character for display
         mutate(
           start.x = as.character(start.x),
@@ -352,7 +359,11 @@ server <- function(input, output) {
           start.y = as.character(start.y),
           end.y = as.character(end.y)
         ) %>%
+        ungroup() %>%
+        # Assign new Run ID value (that combines LAFD & TPS)
+        mutate(RunID = 1:length(time)) %>%
         select(
+          RunID,
           run_id.x,
           tps_tag_id.x,
           start.x,
@@ -373,6 +384,7 @@ server <- function(input, output) {
         dplyr::rename('LAFD.Start' = 'start.y') %>%
         dplyr::rename('LAFD.End' = 'end.y')
         
+      print(join_tbl)
       
       # Return joined table
       return(join_tbl)
@@ -394,45 +406,6 @@ server <- function(input, output) {
     return(match_tbl)
 
   })
-  
-  # # Post-Join LAFD table
-  # lafd_tbl <- reactive({
-  #   
-  #   lafd_tbl <- join_tbl() %>%
-  #     filter(is.na(run_id)) %>%
-  #     select(File, start.y, end.y, Miles, MPH) %>%
-  #     mutate(
-  #       start.y = as.character(start.y),
-  #       end.y = as.character(end.y)
-  #     ) %>%
-  #     dplyr::rename('File' = 'File') %>%
-  #     dplyr::rename('Start' = 'start.y') %>%
-  #     dplyr::rename('End' = 'end.y')
-  #   
-  #   # Return formatted table
-  #   return(lafd_tbl)
-  #   
-  # })
-  
-  # # Post-Join LADOT TPS table
-  # tps_tbl <- reactive({
-  #   
-  #   tps_tbl <- join_tbl() %>%
-  #     filter(is.na(File)) %>%
-  #     select(run_id, start.x, end.x) %>%
-  #     mutate(
-  #       start.x = as.character(start.x),
-  #       end.x = as.character(end.x)
-  #     ) %>%
-  #     dplyr::rename('Run ID' = 'run_id') %>%
-  #     dplyr::rename('Start' = 'start.x') %>%
-  #     dplyr::rename('End' = 'end.x')
-  #   
-  #   # Return formatted table
-  #   return(tps_tbl)
-  #   
-  # })
-  
 
   
   ### UI Text Output
@@ -476,7 +449,11 @@ server <- function(input, output) {
     if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
       
       # Return formatted table
-      return(match_tbl())
+      return(match_tbl() %>%
+               select(
+                 -TPS.RunID
+               )
+             ) 
       
     } else {
       return(NULL)
@@ -484,7 +461,8 @@ server <- function(input, output) {
     
   },
   # Restrict it to only one row selected at a time
-  selection='single')
+  selection = 'single',
+  rownames = FALSE)
   
   # Unmatched LAFD Table
   output$alltable <- DT::renderDataTable({
@@ -492,7 +470,11 @@ server <- function(input, output) {
     # Process once both inputs have been uploaded
     if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
       
-      return(join_tbl())
+      return(join_tbl() %>%
+               select(
+                 -TPS.RunID
+               )
+             )
       
     } else {
       return(NULL)
@@ -500,25 +482,10 @@ server <- function(input, output) {
     
   },
   # Restrict it to only one row selected at a time
-  selection='single')
-  
-  # # Unmatched TPS Logs
-  # output$tpstable <- DT::renderDataTable({
-  #   
-  #   # Process once both inputs have been uploaded
-  #   if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
-  #     
-  #     return(tps_tbl())
-  #     
-  #   } else {
-  #     return(NULL)
-  #   }
-  #   
-  # },
-  # # Restrict it to only one row selected at a time
-  # selection='single')
-  
-
+  selection = 'single',
+  rownames = FALSE
+  #,class = 'compact'
+  )
   
   ### Reactive Expressions to get data from selected rows
   # List of all points/paths from selected rows of matched data
@@ -529,13 +496,13 @@ server <- function(input, output) {
       row_num <- input$matchtable_rows_selected
       
       # TPS Points
-      tps_run_num <- as.integer(match_tbl()[row_num, 1])
+      tps_run_num <- as.integer(match_tbl()[row_num, 2])
       tps_points_s <- tps_log() %>%
         filter(run_id == tps_run_num)
       
       # LAFD Points
-      lafd_incident <- as.numeric(match_tbl()[row_num, 5])
-      lafd_veh <- as.character(match_tbl()[row_num,6])
+      lafd_incident <- as.numeric(match_tbl()[row_num, 6])
+      lafd_veh <- as.character(match_tbl()[row_num,7])
       lafd_points_s <- lafd_points() %>%
         filter(incident_id == lafd_incident & veh_id == lafd_veh)
       
@@ -556,61 +523,43 @@ server <- function(input, output) {
     }
   })
   
-  # LAFD points from selected rows
-  lafd_points_s <- reactive({
-    
-    if(is.null(input$lafdtable_rows_selected)){
-      return(NULL)
-    } else {
-      
-      # Get selected rows & grab LAFD Points
-      row_num <- input$lafdtable_rows_selected
-      lafd_map <- as.character(lafd_tbl()[row_num, 1])
-      lafd_points_s <- lafd_points()[[lafd_map]]
-      
-      # Return filtered data
-      return(lafd_points_s)
-    }
-  })
-  
-  # LAFD paths from selected rows
-  lafd_paths_s <- reactive({
-    
-    # If null, return null, else get selected row(s)
-    if(is.null(input$lafdtable_rows_selected)){
-      return(NULL)
-    } else {
+  # Grab points from selected row of 'all' table
+  all_pts_s <- reactive({
+    if(!is.null(input$alltable_rows_selected)){
       
       # Get selected rows
-      row_num <- input$lafdtable_rows_selected
-      lafd_map <- as.character(lafd_tbl()[row_num, 1])
-      lafd_points_s <- lafd_points()[[lafd_map]]
+      row_num <- input$alltable_rows_selected
       
-      # Filter data
-      lafd_paths_df_s <- segmentize(lafd_points_s, lafd_map)
+      # TPS Points
+      if(!is.null(join_tbl()[row_num, 2])){
+        tps_run_num <- as.integer(join_tbl()[row_num, 2])
+        tps_points_s <- tps_log() %>%
+          filter(run_id == tps_run_num)
+      } else {
+        tps_points_s <- NULL
+      }
       
-      # Return filtered data
-      return(lafd_paths_df_s)
-    }
-    
-  })
-  
-  # TPS points from selected rows
-  tps_points_s <- reactive({
-    
-    if(is.null(input$tpstable_rows_selected)){
-      return(NULL)
-    } else {
+      # LAFD Points
+      if(!is.null(join_tbl()[row_num, 6])){
+        lafd_incident <- as.numeric(join_tbl()[row_num, 6])
+        lafd_veh <- as.character(join_tbl()[row_num,7])
+        lafd_points_s <- lafd_points() %>%
+          filter(incident_id == lafd_incident & veh_id == lafd_veh)
+      } else {
+        lafd_points_s <- NULL
+      }
       
-      # Get selected rows, then run # from joined table
-      row_num <- input$tpstable_rows_selected
-      run_num <- as.integer(tps_tbl()[row_num,1])
+      # Create list of data
+      all_pts_s <- list(
+        tps_points_s = tps_points_s,
+        lafd_points_s = lafd_points_s#,
+        #lafd_paths_df_s = lafd_paths_df_s
+      )
       
-      # Grab points from selected run #
-      tps_points_s <- tps_log() %>%
-        filter(run_id == run_num)
+      print(all_pts_s)
       
-      return(tps_points_s)
+      return(all_pts_s)
+
     }
   })
   
@@ -647,14 +596,14 @@ server <- function(input, output) {
         #   data = match_pts_s$lafd_paths_df_s
         # ) %>%
         addAwesomeMarkers(
-          data = match_pts_s$lafd_points_s
-          ,icon = createIcon('red')
-          ,label = as.character(match_pts_s$lafd_points_s$timestmp)
+          data = match_pts_s$lafd_points_s,
+          icon = createIcon('red'),
+          label = as.character(match_pts_s$lafd_points_s$timestmp)
         ) %>%
         addAwesomeMarkers(
-          data = match_pts_s$tps_points_s
-          ,icon = createIcon('blue')
-          ,label = ~as.character(match_pts_s$tps_points_s$TIMESTMP)
+          data = match_pts_s$tps_points_s,
+          icon = createIcon('blue'),
+          label = ~as.character(match_pts_s$tps_points_s$TIMESTMP)
         ) %>%
         # Update the map zoom bounds
         fitBounds(lng1 = max(match_pts_s$lafd_points_s$lon),
@@ -665,61 +614,132 @@ server <- function(input, output) {
     }
   })
   
-  # Observer focused on Unmatched LAFD Points
+  # Observer focused on All Runs
   observe({
     
-    if(!is.null(input$lafdtable_rows_selected)) {
+    if(!is.null(input$alltable_rows_selected)) {
       
-      lafd_points_s <- lafd_points_s()
+      all_pts_s <- all_pts_s()
       
       # Erase markers/shapes and add new lafd ones
       leafletProxy("map") %>%
         clearShapes() %>%
-        clearMarkers() %>%
-        addPolylines(
-          color = '#fc0307',
-          weight = 3,
-          opacity = 1,
-          data = lafd_paths_s()
-        ) %>%
-        addAwesomeMarkers(
-          data = lafd_points_s
-          ,icon = createIcon('red')
-          ,label = as.character(lafd_points_s$Timestamp)
-        ) %>%
-        # Update the map zoom bounds
-        fitBounds(lng1 = max(lafd_points_s$lon),
-                  lat1 = max(lafd_points_s$lat),
-                  lng2 = min(lafd_points_s$lon),
-                  lat2 = min(lafd_points_s$lat)
-                  )
+        clearMarkers() 
+        # addPolylines(
+        #   color = '#fc0307',
+        #   weight = 3,
+        #   opacity = 1,
+        #   data = match_pts_s$lafd_paths_df_s
+        # ) %>%
+      # Add LADOT points (if not null)
+      if(nrow(all_pts_s$tps_points_s) > 0){
+        leafletProxy("map") %>%
+          addAwesomeMarkers(
+            data = all_pts_s$tps_points_s
+            ,icon = createIcon('blue')
+            ,label = ~as.character(all_pts_s$tps_points_s$TIMESTMP)
+          )
+      }
+      # Add LAFD points (if not null)
+      if(nrow(all_pts_s$lafd_points_s) > 0){
+        leafletProxy("map") %>%
+          addAwesomeMarkers(
+            data = all_pts_s$lafd_points_s
+            ,icon = createIcon('red')
+            ,label = as.character(all_pts_s$lafd_points_s$timestmp)
+          ) %>%
+          # Update the map zoom bounds
+          fitBounds(lng1 = max(all_pts_s$lafd_points_s$lon),
+                    lat1 = max(all_pts_s$lafd_points_s$lat),
+                    lng2 = min(all_pts_s$lafd_points_s$lon),
+                    lat2 = min(all_pts_s$lafd_points_s$lat)
+          )
+          
+      } else {
+        
+        # Update map zoom bounds to be based on TPS points
+        leafletProxy("map") %>%
+          fitBounds(lng1 = max(all_pts_s$tps_points_s$lon),
+                    lat1 = max(all_pts_s$tps_points_s$lat),
+                    lng2 = min(all_pts_s$tps_points_s$lon),
+                    lat2 = min(all_pts_s$tps_points_s$lat)
+          )
+        
+      }
+        # addAwesomeMarkers(
+        #   data = match_pts_s$lafd_points_s
+        #   ,icon = createIcon('red')
+        #   ,label = as.character(match_pts_s$lafd_points_s$timestmp)
+        # ) %>%
+        # addAwesomeMarkers(
+        #   data = match_pts_s$tps_points_s
+        #   ,icon = createIcon('blue')
+        #   ,label = ~as.character(match_pts_s$tps_points_s$TIMESTMP)
+        # ) %>%
+        # # Update the map zoom bounds
+        # fitBounds(lng1 = max(match_pts_s$lafd_points_s$lon),
+        #           lat1 = max(match_pts_s$lafd_points_s$lat),
+        #           lng2 = min(match_pts_s$lafd_points_s$lon),
+        #           lat2 = min(match_pts_s$lafd_points_s$lat)
+        # )
     }
   })
   
-  # Observer focused on Unmatched TPS Points
-  observe({
-    
-    if(!is.null(input$tpstable_rows_selected)) {
-      
-      tps_points_s <- tps_points_s()
-      
-      # Erase markers/shapes and add new tps ones
-      leafletProxy("map") %>%
-        clearShapes() %>%
-        clearMarkers() %>%
-        addAwesomeMarkers(
-          data = tps_points_s
-          ,icon = createIcon('blue')
-          ,label = ~as.character(TIMESTMP)
-        ) %>%
-        #Update the map zoom bounds
-        fitBounds(lng1 = max(tps_points_s$lon),
-                  lat1 = max(tps_points_s$lat),
-                  lng2 = min(tps_points_s$lon),
-                  lat2 = min(tps_points_s$lat)
-        )
-    }
-  })
+  # # Observer focused on Unmatched LAFD Points
+  # observe({
+  #   
+  #   if(!is.null(input$lafdtable_rows_selected)) {
+  #     
+  #     lafd_points_s <- lafd_points_s()
+  #     
+  #     # Erase markers/shapes and add new lafd ones
+  #     leafletProxy("map") %>%
+  #       clearShapes() %>%
+  #       clearMarkers() %>%
+  #       addPolylines(
+  #         color = '#fc0307',
+  #         weight = 3,
+  #         opacity = 1,
+  #         data = lafd_paths_s()
+  #       ) %>%
+  #       addAwesomeMarkers(
+  #         data = lafd_points_s
+  #         ,icon = createIcon('red')
+  #         ,label = as.character(lafd_points_s$Timestamp)
+  #       ) %>%
+  #       # Update the map zoom bounds
+  #       fitBounds(lng1 = max(lafd_points_s$lon),
+  #                 lat1 = max(lafd_points_s$lat),
+  #                 lng2 = min(lafd_points_s$lon),
+  #                 lat2 = min(lafd_points_s$lat)
+  #                 )
+  #   }
+  # })
+  # 
+  # # Observer focused on Unmatched TPS Points
+  # observe({
+  #   
+  #   if(!is.null(input$tpstable_rows_selected)) {
+  #     
+  #     tps_points_s <- tps_points_s()
+  #     
+  #     # Erase markers/shapes and add new tps ones
+  #     leafletProxy("map") %>%
+  #       clearShapes() %>%
+  #       clearMarkers() %>%
+  #       addAwesomeMarkers(
+  #         data = tps_points_s
+  #         ,icon = createIcon('blue')
+  #         ,label = ~as.character(TIMESTMP)
+  #       ) %>%
+  #       #Update the map zoom bounds
+  #       fitBounds(lng1 = max(tps_points_s$lon),
+  #                 lat1 = max(tps_points_s$lat),
+  #                 lng2 = min(tps_points_s$lon),
+  #                 lat2 = min(tps_points_s$lat)
+  #       )
+  #   }
+  # })
   
   #### Download data
   output$downloadData <- downloadHandler(

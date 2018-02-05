@@ -333,10 +333,10 @@ server <- function(input, output) {
         genome_full_join(lafd_paths_tbl, by=c("tps_tag_id","start",'end')) %>%
         # Convert numeric back to dates (need to add origin variable)
         mutate(
-          start.x = as.POSIXct(start.x, origin="1970-01-01"),
-          end.x = as.POSIXct(end.x, origin="1970-01-01"),
-          start.y = as.POSIXct(start.y, origin="1970-01-01"),
-          end.y = as.POSIXct(end.y, origin="1970-01-01")
+          start.x = as.POSIXct(start.x, origin="1970-01-01", tz = "America/Los_Angeles"),
+          end.x = as.POSIXct(end.x, origin="1970-01-01", tz = "America/Los_Angeles"),
+          start.y = as.POSIXct(start.y, origin="1970-01-01", tz = "America/Los_Angeles"),
+          end.y = as.POSIXct(end.y, origin="1970-01-01", tz = "America/Los_Angeles")
         ) %>%
         mutate(
           time = ifelse(!is.na(start.x),

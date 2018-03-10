@@ -40,7 +40,7 @@ geom_buff <- function(boundary, ft) {
 lafd_process <- function(datapath, fname) {
   
   # Extract veh_id
-  veh_id <- strsplit(fname, "_")[[1]][1]
+  #veh_id <- strsplit(fname, "_")[[1]][1]
   
   # Read in LAFD Data
   lafd_data <- read.csv(datapath,
@@ -50,7 +50,8 @@ lafd_process <- function(datapath, fname) {
   
   lafd_data <- lafd_data %>%
     mutate(incident_id = as.numeric(INCIDENT_NBR),
-           veh_id = veh_id,
+           #veh_id = veh_id,
+           veh_id = UNIT_NAME,
            status = UNIT_STATUS,
            lat = as.numeric(LATITUDE),
            lon = as.numeric(LONGITUDE),

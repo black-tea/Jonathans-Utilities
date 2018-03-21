@@ -26,17 +26,6 @@ bss <- st_read("Data/Street_Pavement_Condition.shp")
 There are actually several subclassifications within the 'Major Street' classification. I want them all.
 
 ```{r}
-fname = system.file("shape/nc.shp", package = "sf")
-nc = read_sf(fname)
-print(nc, n = 3)
-```
-
-```{r}
-pts <- st_touches(nc)
-pts <- st
-```
-
-```{r}
 bss_filtered <- bss %>%
   select(
     SECT_ID,

@@ -19,12 +19,12 @@ options(tibble.print_max = Inf)
 
 ### Load and Prep Data
 # Venice Boundary
-veniceblvd <- st_read('data/eval_extent/tsp-extent_line.shp')
+tps_extent <- st_read('data/eval_extent/tsp-extent_line.shp')
 # Loop Detector Location 
 detectors <- read.csv('data/signal/detectors.csv', header = TRUE, sep = ',', stringsAsFactors = FALSE)
 # Loop Tag ID Pairs
-lafd_veh_id <- c('e62', 'ra62')
-tps_tag_id <- c(6598, 5614)
+lafd_veh_id <- c('E62', 'RA62','E83','RA83')
+tps_tag_id <- c(6598, 5614,5176,5880)
 tag_tbl <- data.frame(tps_tag_id, lafd_veh_id)
 
 ### Support Functions
@@ -90,7 +90,7 @@ tps_process <- function(datapath) {
   
   loop_data <- loop_data %>%
     # Convert timestamp to date/time value
-    mutate(RECID = as.numeric(RECID),
+    mutate(#RECID = as.numeric(RECID),
            # lubridate package to supply vector of possible datetime character formats
            TIMESTMP = parse_date_time(TIMESTMP,
                                       orders = c("%m/%d/%Y %H:%M:%S",
@@ -134,7 +134,7 @@ tps_process <- function(datapath) {
 sf_points_filter <- function(spatial_df) {
   
   # Filter points within project boundary
-  sf_df_filtered <- spatial_df[veniceblvd_buff,]
+  sf_df_filtered <- spatial_df[tps_extent_buff,]
   
   # Only return if it has at least two points in project boundary
   if(nrow(sf_df_filtered) > 1){
@@ -160,7 +160,7 @@ createIcon <- function(color) {
 }
  
 ### Load and Prep Data
-veniceblvd_buff <- geom_buff(veniceblvd, 100)
+tps_extent_buff <- geom_buff(tps_extent, 100)
 
 ### Server Code
 server <- function(input, output) {
@@ -238,7 +238,7 @@ server <- function(input, output) {
       lafd_points <- do.call(rbind, lafd_points)
       
       # Filter by project limits
-      lafd_points <- lafd_points[veniceblvd_buff,]
+      lafd_points <- lafd_points[tps_extent_buff,]
       
       lafd_log <- lafd_points %>%
         dplyr::group_by(incident_id, veh_id) %>%
@@ -323,6 +323,8 @@ server <- function(input, output) {
         # Genome join requires numeric, so convert posixct -> numeric
         mutate(start = as.numeric(start),
                end = as.numeric(end))
+      print(lafd_paths_tbl)
+      print(tag_tbl)
       
       tps_runs_tbl <- tps_runs() %>%
         # Genome join requires numeric, so convert posixct -> numeric
@@ -394,7 +396,7 @@ server <- function(input, output) {
     match_tbl <- join_tbl() %>%
       filter(!is.na(TPS.RunID)) %>%
       filter(!is.na(Incident)) 
-      
+    print(match_tbl)
     # Return formatted table
     return(match_tbl)
 
@@ -426,23 +428,27 @@ server <- function(input, output) {
 
     # If not null, process files and output
     if((!is.null(input$lafd_files))&(!is.null(input$tps_files))) {
-      
-      # Return formatted table
+      #print('match table!!!')
+      #print(match_tbl())
+      #return(match_tbl())
+      #Return formatted table
       return(match_tbl() %>%
                select(
                  -TPS.RunID,
                  -LAFD.RunID
                )
-             ) 
+             )
       
     } else {
+
       return(NULL)
     }
     
   },
   # Restrict it to only one row selected at a time
   selection = 'single',
-  rownames = FALSE)
+  rownames = FALSE
+  )
   
   # Unmatched LAFD Table
   output$alltable <- DT::renderDataTable({
@@ -465,7 +471,6 @@ server <- function(input, output) {
   # Restrict it to only one row selected at a time
   selection = 'single',
   rownames = FALSE
-  #,class = 'compact'
   )
   
   ### Reactive Expressions to get data from selected rows
@@ -546,7 +551,7 @@ server <- function(input, output) {
         lafd_paths_s = lafd_paths_s
       )
       
-      print(all_pts_s)
+      #print(all_pts_s)
       
       return(all_pts_s)
 

@@ -10,8 +10,10 @@ library(sp)
 # Import street centerline file into sf dataframe object
 la_streets <- st_read("C:/Users/Tim/Downloads/Streets_Centerline/Streets_Centerline.shp",quiet=TRUE)
 la_streets <- la_streets %>%
-  dplyr::select(ASSETID, STNUM, ID, STNAME, OLD_STREET, geometry) %>%
+  dplyr::select(ASSETID, STNUM, ID, STNAME, STSFX, OLD_STREET, geometry) %>%
   dplyr::mutate(len = st_length(geometry)) %>%
+  dplyr::mutate(STNAME = paste(STNAME, STSFX, sep = ' ')) %>%
+  dplyr::select(-STSFX) %>%
   filter(OLD_STREET %in% c('Secondary Highway',
                            'Local Street',
                            'Collector Street',
@@ -31,6 +33,21 @@ la_streets_SLN <- SpatialLinesNetwork(la_streets_SL)
 # Identify nodes, correspond to SpatialLinesNetwork@nb values
 la_streets_nodes <- sln2points(la_streets_SLN)
 
+# Generate name pairs for each node / intersection in the network
+# Sapply through each node in la_streets_SLN@nb
+la_streets_SLN_nodenames <- sapply(la_streets_SLN@nb, function(x) {
+  
+  # Each node has a vector of IDs for the linestring
+  # For each vector of street IDs, return vector of street names 
+  street_names <- sapply(x, function(y){
+    return(la_streets_SLN@sl$STNAME[[y]])})
+  
+  # Remove duplicates, concatenate unique
+  street_names <- paste((unique(street_names)),collapse=" & ")
+  
+  return(street_names)
+})
+
 # Method 2: Convert to sfNetwork object (pure sf)
 # As of 3/24/18, package doesn't appear to have support for sfNetwork class
 # Should be able to take sf object, but cannot
@@ -38,13 +55,13 @@ la_streets_nodes <- sln2points(la_streets_SLN)
 
 
 # Calculate shortest path, based on distance, using node IDs
-shortpath <- sum_network_routes(la_streets_SLN, 300, 405, sumvars = "length")
+shortpath <- sum_network_routes(la_streets_SLN, 1, 405, sumvars = "length")
 
 # Plot the results, confirming that shortpath uses node IDs (not segment IDs) for routing
 plot(shortpath, col = "red", lwd = 3)
 plot(la_streets_SLN, col = "grey", add = TRUE)
 plot(shortpath, col = "red", lwd = 3, add = TRUE)
-plot(la_streets_nodes[c(300,405),], col = "black", pch = 16, cex = 1.2, asp = 1, add=TRUE)
+plot(la_streets_nodes[c(1,405),], col = "black", pch = 16, cex = 1.2, asp = 1, add=TRUE)
 
 # NEXT STEPS
 # For each node ID in la_streets_SLN@nb, get object IDs of segments

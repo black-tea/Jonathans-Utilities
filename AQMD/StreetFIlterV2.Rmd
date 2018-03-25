@@ -1,0 +1,60 @@
+---
+title: "Selecting Streets"
+output: md_document
+---
+
+### Background
+For projects at LADOT, we are sometimes asked to look at projects at the corridor level and calculate metrics. One piece of this includes defining (and then building) "a corridor," which is a bit tricker than it sounds. Since all the street data we have at the block level, we need to aggreagate up to create corridors. How we do that is different depending on the task, but the example here required first filtering by street classification & street width, then filtering up from there.
+
+### Task Plan
+
+1. Filter out only those blocks within the 'Major Street' classification
+2. Join touching segments that share the street name
+3. Filter out segments longer than 1/4 mi.
+
+```{r}
+# load libraries
+library(sf)
+library(dplyr)
+library(leaflet)
+library(units)
+
+# import street data
+
+caltrans <- st_read("Data/CaltransCenterlineD07_LACityClip.shp")
+```
+
+There are actually several subclassifications within the 'Major Street' classification. I want them all.
+
+```{r}
+calltrans_filtered <- caltrans %>%
+  select(
+    FULLNAME,
+    FC_DRAFT) %>%
+  filter(FC_DRAFT == 3) %>%
+  # Group & Merge by 
+  group_by(FULLNAME) %>%
+  summarize() %>%
+  # Cast sfc_geometry mix to sfc_multilinestring
+  st_cast() %>%
+  # Select only those with a length > 1/4 mi (402.336m)
+  filter(st_length(.) > set_units(402.336, m))
+
+# need to add st_line_merge to aggregate blocks up into segments
+```
+
+```{r}
+caltrans_merge <- st_line_merge(calltrans_filtered)
+```
+
+
+```{r}
+leaflet() %>%
+  addTiles() %>%
+  addPolylines(data=caltrans_merge)
+```
+
+```{r}
+st_write(caltrans_merge, 'caltrans__major.shp')
+```
+

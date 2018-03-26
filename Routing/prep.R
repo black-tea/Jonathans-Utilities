@@ -48,23 +48,19 @@ la_streets_SLN_nodenames <- sapply(la_streets_SLN@nb, function(x) {
   return(street_names)
 })
 
+# Create named vector of street intersections
+nodes <- c(1:59588)
+names(nodes) <- la_streets_SLN_nodenames
+
+shortpath <- sum_network_routes(la_streets_SLN, 1, 430, sumvars = "length")
+shortpath_sf <- st_as_sf(shortpath)
+
 # Method 2: Convert to sfNetwork object (pure sf)
 # As of 3/24/18, package doesn't appear to have support for sfNetwork class
 # Should be able to take sf object, but cannot
 #la_streets_sfN <- SpatialLinesNetwork(la_streets)
 
-# Calculate shortest path, based on distance, using node IDs
-shortpath <- sum_network_routes(la_streets_SLN, 1, 405, sumvars = "length")
+# Output to .rds
+saveRDS(nodes, 'data/nodes.rds')
+saveRDS(la_streets_SLN, 'data/la_network.rds')
 
-# Plot the results, confirming that shortpath uses node IDs (not segment IDs) for routing
-plot(shortpath, col = "red", lwd = 3)
-plot(la_streets_SLN, col = "grey", add = TRUE)
-plot(shortpath, col = "red", lwd = 3, add = TRUE)
-plot(la_streets_nodes[c(1,405),], col = "black", pch = 16, cex = 1.2, asp = 1, add=TRUE)
-
-# NEXT STEPS
-# For each node ID in la_streets_SLN@nb, get object IDs of segments - COMPLETE
-# Join IDs to original data source, get list of unique names - COMPLETE
-# Concatenate list of unique street names to get an intersection name, eg 'Wilshire & Vermont' - COMPLETE
-# User searches, autocompletes intersection name to https://stackoverflow.com/questions/35265920/auto-complete-and-selection-of-multiple-values-in-text-box-shiny
-# sum_network_routes runction converts to spatial object, then show on top of leaflet library.

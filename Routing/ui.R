@@ -33,10 +33,11 @@ ui <- fluidPage(
                             selected = NULL,
                             multiple = FALSE),
              
-             h5(tags$b('Create a Corridor')),
+             #h5(tags$b('Create a Corridor')),
              
              # Download button
-             downloadButton('downloadData', 'Download')
+             #downloadButton('downloadData', 'Download')
+             actionButton("addEntry", "Add Corridor")
            )
     ),
     
@@ -48,8 +49,8 @@ ui <- fluidPage(
   
   fluidRow(
     tabsetPanel(
-      tabPanel("Matched Runs", DT::dataTableOutput("matchtable")),
-      tabPanel("All Runs", DT::dataTableOutput("alltable"))
+      #tabPanel("Matched Runs", DT::dataTableOutput("matchtable")),
+      tabPanel("Corridors", DT::dataTableOutput("pathtable"))
     )
   )
 )

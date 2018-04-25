@@ -531,7 +531,7 @@ server <- function(input, output) {
       if(!is.null(join_tbl()[row_num, 7])){
         lafd_incident <- as.numeric(join_tbl()[row_num, 7])
         lafd_veh <- as.character(join_tbl()[row_num,8])
-        lafd_run <- as.numeric(match_tbl()[row_num,6])
+        lafd_run <- as.numeric(join_tbl()[row_num,6])
         lafd_points_s <- lafd_points() %>%
           filter(incident_id == lafd_incident & veh_id == lafd_veh & run_id == lafd_run)
       } else {

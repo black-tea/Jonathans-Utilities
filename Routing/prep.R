@@ -8,7 +8,7 @@ library(sp)
 # https://www.rdocumentation.org/packages/stplanr/versions/0.2.2/topics/SpatialLinesNetwork
 
 # Import street centerline file into sf dataframe object
-la_streets <- st_read("C:/Users/Tim/Downloads/Streets_Centerline/Streets_Centerline.shp",quiet=TRUE)
+la_streets <- st_read("data/centerline/Streets_Centerline.shp",quiet=TRUE)
 la_streets <- la_streets %>%
   dplyr::select(ASSETID, STNUM, ID, STNAME, STSFX, OLD_STREET, geometry) %>%
   dplyr::mutate(len = st_length(geometry)) %>%
@@ -40,7 +40,7 @@ la_streets_SLN_nodenames <- sapply(la_streets_SLN@nb, function(x) {
   # Each node has a vector of IDs for the linestring
   # For each vector of street IDs, return vector of street names 
   street_names <- sapply(x, function(y){
-    return(la_streets_SLN@sl$STNAME[[y]])})
+    return(la_streets_SL@data$STNAME[[y]])})
   
   # Remove duplicates, concatenate unique
   street_names <- paste((unique(street_names)),collapse=" & ")

@@ -226,7 +226,7 @@ server <- function(input, output) {
     }
   })
   
-  # Reactive expression to process files to list of sf dfs
+  # Reactive expression to process html files to list of sf dfs
   lafd_points <- reactive({
     
     if(!is.null(input$lafd_files)) {
@@ -499,6 +499,8 @@ server <- function(input, output) {
                  -LAFD.RunID
                )
              )
+      
+    }
     
     else {
       return(NULL)
@@ -526,13 +528,12 @@ server <- function(input, output) {
       # LAFD Points
       lafd_incident <- as.numeric(match_tbl()[row_num, 7])
       lafd_veh <- as.character(match_tbl()[row_num,8])
-      lafd_run <- as.numeric(match_tbl()[row_num,6])
       lafd_points_s <- lafd_points() %>%
-        filter(incident_id == lafd_incident & veh_id == lafd_veh & run_id == lafd_run)
+        filter(incident_id == lafd_incident & veh_id == lafd_veh)
       
       # LAFD Paths
       lafd_paths_s <- lafd_paths() %>%
-        filter(incident_id == lafd_incident & veh_id == lafd_veh & run_id == lafd_run)
+        filter(incident_id == lafd_incident & veh_id == lafd_veh)
       
       # Create list of data
       match_pts_s <- list(
@@ -569,9 +570,8 @@ server <- function(input, output) {
       if(!is.null(join_tbl()[row_num, 7])){
         lafd_incident <- as.numeric(join_tbl()[row_num, 7])
         lafd_veh <- as.character(join_tbl()[row_num,8])
-        lafd_run <- as.numeric(join_tbl()[row_num,6])
         lafd_points_s <- lafd_points() %>%
-          filter(incident_id == lafd_incident & veh_id == lafd_veh & run_id == lafd_run)
+          filter(incident_id == lafd_incident & veh_id == lafd_veh)
       } else {
         lafd_points_s <- NULL
       }
@@ -579,7 +579,7 @@ server <- function(input, output) {
       # LAFD Paths
       if(!is.null(join_tbl()[row_num, 7])){
         lafd_paths_s <- lafd_paths() %>%
-          filter(incident_id == lafd_incident & veh_id == lafd_veh & run_id == lafd_run)
+          filter(incident_id == lafd_incident & veh_id == lafd_veh)
       } else {
         lafd_paths_s <- NULL
       }

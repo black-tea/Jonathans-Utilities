@@ -48,8 +48,8 @@ ui <- fluidPage(
   fluidRow(
     tabsetPanel(
       #id = 'contents',
-      tabPanel("Matched Runs", DT::dataTableOutput("matchtable")),
-      tabPanel("All Runs", DT::dataTableOutput("alltable"))
+      tabPanel("All Runs", DT::dataTableOutput("alltable")),
+      tabPanel("Matched Runs", DT::dataTableOutput("matchtable"))
       #tabPanel("Unmatched LAFD Runs", DT::dataTableOutput("lafdtable"))
     )
   )
